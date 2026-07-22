@@ -1,0 +1,11 @@
+// HOLE 2 repro — std/http:http.parse-request emits non-compiling Zig.
+// Run:  koruc run input.k
+// Expected: parsed method/path printed.
+// Actual: raw BACKEND_COMPILE_ERROR leaks from the emitted Zig (see HOLE.md).
+
+~import std/http
+~import std/io
+
+~std/http:http.parse-request(data: "GET /users/42 HTTP/1.1\r\nHost: x\r\n\r\n")
+| request r |> std/io:print.ln("{{ r.method:s }} {{ r.path:s }}")
+| invalid msg |> std/io:print.ln("invalid: {{ msg:s }}")

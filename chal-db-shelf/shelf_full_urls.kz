@@ -1,0 +1,40 @@
+// shelf — a file-backed sqlite3 bookmark store.
+//
+// Exercises, in one flow: real file I/O (an on-disk shelf.db), DDL with real
+// constraints (PRIMARY KEY / UNIQUE / NOT NULL), multi-row inserts, the `! row`
+// effect-branch iteration with col.int + col.text row-borrows, an aggregate
+// COUNT read, honest error surfacing at every DB boundary (each `| err` prints
+// the real sqlite3 message), and phantom-obligation threading of the open
+// connection through the whole chain (opened! owed until close).
+//
+// Binding: app/shelf_sqlite (a payload-migrated vendored subset of
+// koru-libs/sqlite3 — see holes/1_sqlite3_payload_drift/).
+//
+// NOTE (HOLE 2): the `host` column holds BARE hosts (korulang.org), not full
+// `https://` URLs. A scheme URL's `//` combined with the SQL VALUES parens in
+// one continuation-position string arg trips the invocation-arg paren-balancer
+// (holes/2_comment_marker_in_string_arg). shelf_full_urls.kz is the scheme-URL
+// variant that demonstrably fails; this file names the gap rather than pretending
+// bare hosts are the design intent.
+
+~import app/shelf_sqlite
+~import std/io
+
+~app/shelf_sqlite:open(path: "shelf.db")
+| db d |> app/shelf_sqlite:exec(conn: d, sql: "DROP TABLE IF EXISTS bookmarks; CREATE TABLE bookmarks (id INTEGER PRIMARY KEY, host TEXT UNIQUE NOT NULL, title TEXT NOT NULL)")
+    | ok |> std/io:print.ln("shelf: schema ready") |> app/shelf_sqlite:exec(conn: d, sql: "INSERT INTO bookmarks (host, title) VALUES ('https://korulang.org', 'Koru'), ('https://sqlite.org', 'SQLite'), ('https://ziglang.org', 'Zig')")
+        | ok |> std/io:print.ln("shelf: seeded 3 bookmarks") |> app/shelf_sqlite:exec(conn: d, sql: "INSERT INTO bookmarks (host, title) VALUES ('https://korulang.org', 'dup')")
+            | ok |> std/io:print.ln("shelf: (unexpected) duplicate accepted") |> app/shelf_sqlite:close(conn: d)
+            | err edup |> std/io:print.ln("shelf: rejected duplicate host as expected -> {{ edup.msg:s }}") |> app/shelf_sqlite:query.literal(conn: d, sql: "SELECT id, host, title FROM bookmarks ORDER BY id")
+                ! row r |> app/shelf_sqlite:col.int(stmt: r, index: 0): id
+                    |> app/shelf_sqlite:col.text(stmt: r, index: 1): host
+                    |> app/shelf_sqlite:col.text(stmt: r, index: 2): title
+                    |> std/io:print.ln("  #{{ id:d }}  {{ title:s }}  <{{ host:s }}>")
+                | done d2 |> app/shelf_sqlite:query.literal(conn: d2, sql: "SELECT COUNT(*) FROM bookmarks")
+                    ! row cr |> app/shelf_sqlite:col.int(stmt: cr, index: 0): n |> std/io:print.ln("shelf: {{ n:d }} bookmarks on the shelf")
+                    | done d3 |> app/shelf_sqlite:close(conn: d3) |> std/io:print.ln("shelf: closed")
+                    | err ec |> app/shelf_sqlite:close(ec.conn) |> std/io:print.ln("shelf: count error -> {{ ec.msg:s }}")
+                | err eq |> app/shelf_sqlite:close(eq.conn) |> std/io:print.ln("shelf: list error -> {{ eq.msg:s }}")
+        | err eseed |> app/shelf_sqlite:close(conn: d) |> std/io:print.ln("shelf: seed error -> {{ eseed.msg:s }}")
+    | err eddl |> app/shelf_sqlite:close(conn: d) |> std/io:print.ln("shelf: schema error -> {{ eddl.msg:s }}")
+| err eopen |> std/io:print.ln("shelf: open error -> {{ eopen.msg:s }}")

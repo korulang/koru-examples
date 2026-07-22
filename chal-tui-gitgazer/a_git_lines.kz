@@ -1,0 +1,52 @@
+// Increment A — subprocess as a koru EFFECT.
+//
+// There is no std/process in koru today (finding: subprocess spawning has no
+// idiomatic std surface — every consumer reinvents std.process.Child.run in raw
+// Zig). So we model `git` the way std/fs models a file read: a per-line effect.
+// `git-lines` runs `git status --porcelain` and fires `! line` per output line,
+// exactly the shape of std/fs:read-lines (koru_std/fs.kz:27-71). `| done n`
+// after, `| failed e` on error.
+//
+// SAFE term check: reading result.term.Exited unconditionally panics on a
+// nonzero exit WITH stderr (pinned bug 400_141). git does exactly that outside a
+// repo (exit 128 + stderr), so we guard with `result.term == .Exited and ...`.
+
+~import std/io
+
+const std = @import("std");
+
+~event git-lines {}
+! line string
+| done usize
+| failed string
+
+~proc git-lines|zig {
+    const __gg_alloc = std.heap.page_allocator;
+    const __gg_res = std.process.Child.run(.{
+        .allocator = __gg_alloc,
+        .argv = &[_][]const u8{ "git", "status", "--porcelain" },
+    }) catch |err| {
+        return .{ .failed = @errorName(err) };
+    };
+    defer __gg_alloc.free(__gg_res.stdout);
+    defer __gg_alloc.free(__gg_res.stderr);
+
+    const __gg_ok = __gg_res.term == .Exited and __gg_res.term.Exited == 0;
+    if (!__gg_ok) {
+        return .{ .failed = "git exited nonzero" };
+    }
+
+    var __gg_n: usize = 0;
+    var __gg_it = std.mem.splitScalar(u8, __gg_res.stdout, '\n');
+    while (__gg_it.next()) |__gg_raw| {
+        if (__gg_raw.len == 0 and __gg_it.peek() == null) break;
+        line(__gg_raw);
+        __gg_n += 1;
+    }
+    return .{ .done = __gg_n };
+}
+
+~git-lines()
+! line l |> std/io:print.ln("git: {{ l:s }}")
+| done n |> std/io:print.ln("done: {{ n:d }} lines")
+| failed e |> std/io:print.ln("failed: {{ e:s }}")

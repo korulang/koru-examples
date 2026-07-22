@@ -1,0 +1,16 @@
+// HOLE 2 — no idiomatic subprocess surface: `std/process` does not exist.
+//
+// A subprocess-driven app (this whole region) must shell out to `git`. koru_std
+// has fs / io / net / http / threading — but NO process/exec/subprocess/os
+// module. So every consumer reinvents `std.process.Child.run` inside a raw-Zig
+// `~proc <verb>|zig { ... }` FFI block (see koru-libs/docker/index.kz, and this
+// app's own a_git_lines.kz / c_gitgazer.kz). That works, but it is raw-host Zig
+// leaking into every app that runs a process — there is no koru-level, phantom-
+// typed, effect-shaped subprocess primitive (the way std/fs:read-lines wraps a
+// file read as `! line` / `| done` / `| failed`).
+//
+// EXPECTED: an importable `std/process` (or `std/exec`) with an effect-shaped
+//   run/lines surface, phantom-typed like the rest of the stdlib.
+// ACTUAL:   KORU002 module not found: 'std/process'.
+
+~import std/process

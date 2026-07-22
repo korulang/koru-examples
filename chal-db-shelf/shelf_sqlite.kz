@@ -1,0 +1,142 @@
+// shelf_sqlite — VENDORED, payload-migrated subset of koru-libs/sqlite3.
+//
+// WHY THIS EXISTS (see holes/1_sqlite3_payload_drift/HOLE.md):
+// The committed koru-libs/sqlite3/index.kz declares its public event payloads
+// with raw Zig `[]const u8`, which the current koruc rejects (PARSE003 — "Use
+// 'string'"). The whole package is therefore unbuildable by an outside-in
+// consumer. This file is a faithful copy of the organs `shelf` uses, with the
+// ONE mechanical migration the compiler's own error dictates: `[]const u8` ->
+// `string` in koru type positions (payload fields, branch payloads, `-> ` return
+// types). The `~proc|zig` bodies are untouched Zig. The `~query{{}}` comptime
+// transform is intentionally NOT vendored (its hardcoded `root.koru_libs.sqlite3`
+// path is a separate fragility, probed in holes/3). This is conformance to a
+// compiler requirement, not a dodge of a limitation.
+
+~std/deps:requires.system {
+    "name": "sqlite3",
+    "check": "pkg-config --modversion sqlite3",
+    "brew": "sqlite3",
+    "apt": "libsqlite3-dev",
+    "dnf": "sqlite-devel",
+    "pacman": "sqlite",
+    "apk": "sqlite-dev"
+}
+
+~std/build:requires {
+    exe.linkSystemLibrary("sqlite3");
+    exe.linkLibC();
+}
+
+const std = @import("std");
+pub const c = @cImport({
+    @cInclude("sqlite3.h");
+});
+
+pub const Connection = struct {
+    handle: ?*c.sqlite3,
+};
+
+pub const Statement = struct {
+    handle: ?*c.sqlite3_stmt,
+};
+
+// ============================================================================
+// Connection Management
+// ============================================================================
+
+~pub event open { path: string }
+| db *Connection<opened!>
+| err { code: i32, msg: string }
+
+~proc open|zig {
+    var db: ?*c.sqlite3 = null;
+    const rc = c.sqlite3_open(path.ptr, &db);
+    if (rc != c.SQLITE_OK) {
+        const msg = c.sqlite3_errmsg(db);
+        _ = c.sqlite3_close(db);
+        return .{ .err = .{ .code = rc, .msg = std.mem.span(msg) } };
+    }
+    const conn = std.heap.page_allocator.create(Connection) catch unreachable;
+    conn.* = Connection{ .handle = db };
+    return .{ .db = conn };
+}
+
+~pub event close { conn: *Connection<!opened> }
+~proc close|zig {
+    if (conn.handle) |h| {
+        _ = c.sqlite3_close(h);
+    }
+    std.heap.page_allocator.destroy(conn);
+}
+
+// ============================================================================
+// Query Execution
+// ============================================================================
+
+~pub event exec { conn: *Connection<opened>, sql: string }
+| ok
+| err { code: i32, msg: string }
+
+~proc exec|zig {
+    var errmsg: [*c]u8 = null;
+    const rc = c.sqlite3_exec(conn.handle, sql.ptr, null, null, &errmsg);
+    if (rc != c.SQLITE_OK) {
+        const msg = if (errmsg) |e| std.mem.span(e) else "unknown error";
+        if (errmsg) |e| c.sqlite3_free(e);
+        return .{ .err = .{ .code = rc, .msg = msg } };
+    }
+    return .{ .ok = .{} };
+}
+
+// Literal SQL query - runtime SQL string, per-row `! row` effect branch.
+~pub event query.literal { conn: *Connection<!opened>, sql: string }
+! row *Statement<row!>
+| done *Connection<opened!>
+| err { conn: *Connection<opened!>, code: i32, msg: string }
+
+~proc query.literal|zig {
+    var stmt: ?*$mod.c.sqlite3_stmt = null;
+    const rc = $mod.c.sqlite3_prepare_v2(conn.handle, sql.ptr, @intCast(sql.len), &stmt, null);
+    if (rc != $mod.c.SQLITE_OK) {
+        const msg = $mod.c.sqlite3_errmsg(conn.handle);
+        return .{ .err = .{ .conn = conn, .code = rc, .msg = std.mem.span(msg) } };
+    }
+
+    var __row = $mod.Statement{ .handle = stmt };
+    var __rc = $mod.c.sqlite3_step(stmt);
+    while (__rc == $mod.c.SQLITE_ROW) : (__rc = $mod.c.sqlite3_step(stmt)) {
+        row(&__row);
+    }
+    _ = $mod.c.sqlite3_finalize(stmt);
+    if (__rc != $mod.c.SQLITE_DONE) {
+        const msg = $mod.c.sqlite3_errmsg(conn.handle);
+        return .{ .err = .{ .conn = conn, .code = __rc, .msg = std.mem.span(msg) } };
+    }
+    return .{ .done = conn };
+}
+
+// No-op consumer of the per-row borrow (compiler auto-inserts at each row-body
+// boundary; the user never calls it).
+~pub event release.row { stmt: *Statement<!row> }
+~proc release.row|zig { _ = &stmt; }
+
+// ============================================================================
+// Column Access (within row context)
+// ============================================================================
+
+~pub event col.int { stmt: *Statement<row>, index: i32 } -> i64
+~proc col.int|zig {
+    return c.sqlite3_column_int64(stmt.handle, index);
+}
+
+~pub event col.text { stmt: *Statement<row>, index: i32 } -> string
+~proc col.text|zig {
+    const ptr = c.sqlite3_column_text(stmt.handle, index);
+    const len = c.sqlite3_column_bytes(stmt.handle, index);
+    return if (ptr) |p| p[0..@intCast(len)] else "";
+}
+
+~pub event col.real { stmt: *Statement<row>, index: i32 } -> f64
+~proc col.real|zig {
+    return c.sqlite3_column_double(stmt.handle, index);
+}

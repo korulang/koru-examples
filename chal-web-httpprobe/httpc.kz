@@ -1,0 +1,140 @@
+// httpc — a minimal, current-idiom libcurl GET binding for this app.
+//
+// Authored fresh (not consumed from koru-libs/curl) because that published
+// package is stale against the current compiler: its event payloads use
+// `[]const u8`, which koruc now rejects (see holes/1_curl_payload_stale).
+// This binding is identical in spirit to curl's `get`, differing ONLY by the
+// `url: string` payload type the compiler's PARSE003 diagnostic prescribes —
+// so it doubles as proof that curl's fix is exactly that migration.
+//
+// Exercises: real libcurl FFI over the wire + a phantom `<open!>` obligation
+// that the compiler forces the caller to discharge via `close`.
+
+~import std/build
+~import std/deps
+
+~std/deps:requires.system {
+    "name": "curl",
+    "check": "curl-config --version",
+    "brew": "curl",
+    "apt": "libcurl4-openssl-dev"
+}
+
+~std/build:requires {
+    exe.linkSystemLibrary("curl");
+    exe.linkLibC();
+}
+
+const std = @import("std");
+const c = @cImport({
+    @cInclude("curl/curl.h");
+});
+
+pub const Response = struct {
+    handle: ?*c.CURL,
+    allocator: std.mem.Allocator,
+    status: i32,
+    size: i64, // body length as i64 so it drops straight into a store column
+    body: []u8,
+};
+
+pub const Error = struct {
+    code: i32,
+    msg: []const u8,
+};
+
+const WriteContext = struct {
+    buffer: std.ArrayListUnmanaged(u8),
+    allocator: std.mem.Allocator,
+};
+
+fn writeCallback(ptr: [*c]u8, size: c_uint, nmemb: c_uint, userdata: ?*anyopaque) callconv(.c) c_uint {
+    const real_size = size * nmemb;
+    if (userdata) |ud| {
+        const ctx: *WriteContext = @ptrCast(@alignCast(ud));
+        ctx.buffer.appendSlice(ctx.allocator, ptr[0..real_size]) catch return 0;
+    }
+    return real_size;
+}
+
+fn curlError(code: c.CURLcode, allocator: std.mem.Allocator) Error {
+    const msg = c.curl_easy_strerror(code);
+    const duped = allocator.dupe(u8, std.mem.span(msg)) catch "allocation failed";
+    return .{ .code = @intCast(code), .msg = duped };
+}
+
+// ============================================================================
+// GET — returns a Response carrying the `open!` obligation
+// ============================================================================
+
+~pub event get { url: string }
+| ok *Response<open!>
+| err Error
+
+~proc get|zig {
+    const alloc = std.heap.page_allocator;
+
+    const handle = c.curl_easy_init();
+    if (handle == null) {
+        return .{ .err = .{ .code = @intCast(c.CURLE_FAILED_INIT), .msg = "Failed to initialize curl" } };
+    }
+    errdefer _ = c.curl_easy_cleanup(handle);
+
+    const url_z = alloc.dupeZ(u8, url) catch {
+        return .{ .err = .{ .code = -1, .msg = "url allocation failed" } };
+    };
+    defer alloc.free(url_z);
+
+    _ = c.curl_easy_setopt(handle, c.CURLOPT_URL, url_z.ptr);
+    _ = c.curl_easy_setopt(handle, c.CURLOPT_FOLLOWLOCATION, @as(c_long, 1));
+    _ = c.curl_easy_setopt(handle, c.CURLOPT_TIMEOUT, @as(c_long, 20));
+
+    var write_ctx = WriteContext{
+        .buffer = std.ArrayListUnmanaged(u8){},
+        .allocator = alloc,
+    };
+
+    _ = c.curl_easy_setopt(handle, c.CURLOPT_WRITEFUNCTION, writeCallback);
+    _ = c.curl_easy_setopt(handle, c.CURLOPT_WRITEDATA, &write_ctx);
+
+    const result = c.curl_easy_perform(handle);
+    if (result != c.CURLE_OK) {
+        write_ctx.buffer.deinit(alloc);
+        return .{ .err = curlError(result, alloc) };
+    }
+
+    var http_code: c_long = 0;
+    _ = c.curl_easy_getinfo(handle, c.CURLINFO_RESPONSE_CODE, &http_code);
+
+    const resp = alloc.create(Response) catch {
+        write_ctx.buffer.deinit(alloc);
+        _ = c.curl_easy_cleanup(handle);
+        return .{ .err = .{ .code = -1, .msg = "allocation failed" } };
+    };
+    const body_len: i64 = @intCast(write_ctx.buffer.items.len);
+    resp.* = .{
+        .handle = handle,
+        .allocator = alloc,
+        .status = @intCast(http_code),
+        .size = body_len,
+        .body = write_ctx.buffer.toOwnedSlice(alloc) catch &[_]u8{},
+    };
+
+    return .{ .ok = resp };
+}
+
+// ============================================================================
+// close — discharges the `open!` obligation
+// ============================================================================
+
+~pub event close { resp: *Response<!open> }
+
+~proc close|zig {
+    if (resp.handle) |h| {
+        c.curl_easy_cleanup(h);
+    }
+    if (resp.body.len > 0) {
+        resp.allocator.free(resp.body);
+    }
+    resp.allocator.destroy(resp);
+}

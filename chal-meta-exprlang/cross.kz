@@ -1,0 +1,10 @@
+// cross — consumer that invokes the calc_dsl comptime-transform ACROSS a
+// module boundary. This is the ambitious reach: a user-defined
+// [comptime|transform] event, imported from another module, driven by a
+// Source block at the call site.
+
+~import std/io
+~import app/calc_dsl
+
+~app/calc_dsl:calc-fold { 6 * 7 + 8 }
+| computed r |> std/io:print.ln("6 * 7 + 8 = {{ r.value:d }}")

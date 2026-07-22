@@ -1,0 +1,16 @@
+// HOLE 2 repro — pure stdlib, self-contained.
+// A call in CONTINUATION position whose string arg contains `//` (a URL, a path,
+// a comment marker as literal data) inside parentheses is mis-parsed: the
+// invocation-argument paren-balancer treats `//` as a line-comment start even
+// though it is inside a double-quoted string literal, swallows the closing `)`,
+// and reports a false "unbalanced parentheses".
+//
+// EXPECTED: shape-checks (the string "(a//b)" is ordinary data).
+// ACTUAL:   error[PARSE003]: unbalanced parentheses in invocation arguments
+//
+// Control (passes): replace `//` with `:` -> "(a:b)" shape-checks fine.
+~import std/io
+~import std/string
+~std/string:from-page(text: "hi")
+| ok s |> std/io:print.ln("(a//b)")
+| err _ |> _

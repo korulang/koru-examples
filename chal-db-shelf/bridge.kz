@@ -1,0 +1,25 @@
+// AIMED-PAST: DB -> reactive store bridge.
+// Iterate sqlite rows (! row), copy each title into an OWNED std/string:String
+// (from-page copies), move it INTO a reactive std/store owned-string column, and
+// let an `! inserted` lifecycle interceptor react per insert. Composes:
+// sqlite3 `! row` effect branch + std/string ownership + std/store insert write
+// path + reactive interceptor — four effect/obligation machineries nested.
+// Reads the shelf.db seeded by shelf.kz.
+~import app/shelf_sqlite
+~import std/io
+~import std/string
+~import std/store
+
+~std/store:new(titles, capacity: 16) { title: *std/string:String<std/string:instance!> }
+! inserted { title } |> std/string:read(s: title): t |> std/io:print.ln("store <- {{ t:s }}")
+
+~app/shelf_sqlite:open(path: "shelf.db")
+| db d |> app/shelf_sqlite:query.literal(conn: d, sql: "SELECT title FROM bookmarks ORDER BY id")
+    ! row r |> app/shelf_sqlite:col.text(stmt: r, index: 0): title
+        |> std/string:from-page(text: title)
+            | ok s |> std/string:take(s): owned |> std/store:insert(titles) { title: owned }
+                | row _ |> _
+            | err _ |> _
+    | done d2 |> app/shelf_sqlite:close(conn: d2) |> std/io:print.ln("bridge done")
+    | err e |> app/shelf_sqlite:close(e.conn) |> std/io:print.ln("query err")
+| err e |> std/io:print.ln("open err")

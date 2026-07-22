@@ -1,0 +1,22 @@
+// REPRO: a [comptime|transform] event whose Source block is invoked in
+// CONTINUATION position (downstream of a pipeline binding) panics the
+// transform pass with a raw host-level panic instead of a koru diagnostic.
+//
+// The SAME transform (app/calc_dsl:calc-fold) works at TOP LEVEL — see the
+// parent app's app.kz (`2 + 3 * 4 = 14`) and cross.kz (`6 * 7 + 8 = 50`).
+// Only continuation position breaks.
+//
+//   $ koruc run input.kz
+//   ║  TRANSFORM ERROR: Invocation not replaced!                       ║
+//   thread N panic: transform pass failed — see error above
+//     /Users/larsde/src/koru/src/transform_pass_runner.zig:1036
+~import std/io
+~import app/calc_dsl
+
+~event seed {} -> i64
+~proc seed|zig {
+    return 100;
+}
+
+~seed(): v |> app/calc_dsl:calc-fold { 5 + 5 }
+    | computed r |> std/io:print.ln("continuation calc = {{ r.value:d }}")

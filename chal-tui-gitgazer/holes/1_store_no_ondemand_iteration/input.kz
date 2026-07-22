@@ -1,0 +1,32 @@
+// HOLE 1 — a plural std/store's rows cannot be iterated ON DEMAND.
+//
+// `std/store:query` is the only row-iteration primitive, and it is a
+// top-level-only comptime transform: it resolves its store by scanning
+// TOP-LEVEL program items. Nested inside a repeatable handler/loop body (here a
+// `! each` for-loop; equally a vaxis `! draw` / `! key` handler) it fails to
+// resolve the store — even though `items` is declared `capacity: 8` right above.
+//
+// This blocks the retained-mode render a TUI needs: repainting all current rows
+// on a NON-mutating event (a selection-highlight change, a resize repaint, a
+// manual refresh). The store is reactive-incremental by design ("No
+// reconciliation pass, no scan: the aggregate rides the write paths" —
+// koru/tests/regression/600_STDLIB/690_STORE/690_041_store_arena_live_hp_aggregate),
+// so there is deliberately no on-demand scan — but a retained-mode renderer
+// (vaxis) needs exactly that.
+//
+// EXPECTED: prints `v 10` / `v 20` on each of the 2 iterations (rows swept on
+//   demand), OR a clear koru-level diagnostic naming the real constraint.
+// ACTUAL:   BACKEND_COMPILE_ERROR — "std/store:query(items): unknown store - no
+//   std/store:new(items) found" — which is ALSO misleading: the store IS
+//   declared; the real constraint is "query cannot be nested in a handler body".
+
+~import std/io
+~import std/store
+
+~std/store:new(items, capacity: 8) { v: i64 }
+~std/store:insert(items) { v: 10 }
+~std/store:insert(items) { v: 20 }
+
+~for(0..2)
+! each _ |> std/store:query(items)
+    ! query { entity.v } |> std/io:print.ln("v {{ v:d }}")

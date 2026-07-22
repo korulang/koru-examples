@@ -1,0 +1,13 @@
+// HOLE 4 repro — pure stdlib, self-contained.
+// `l` is bound in the `! line` effect-branch body of read-lines, then referenced
+// in the SIBLING `| done` branch where it is out of scope (`! line` runs per
+// line; `| done` runs once, after the read).
+//
+// EXPECTED: koruc --check REJECTS with a koru-level scope diagnostic on `l`.
+// ACTUAL:   see below.
+~import std/io
+~import std/fs
+~std/fs:read-lines(path: "nope.txt")
+! line l |> std/io:print.ln("line {{ l:s }}")
+| done _ |> std/io:print.ln("escaped line = {{ l:s }}")
+| failed _ |> _

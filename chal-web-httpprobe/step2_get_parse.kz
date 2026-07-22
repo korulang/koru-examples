@@ -1,0 +1,13 @@
+// Step 2 — network -> parse boundary: feed the live response body into std/json.
+// Stresses: r.body ([]u8) crossing into std/json:get.string (json: string),
+// nested branch handling, and discharging the `open!` obligation on every path.
+
+~import app/httpc
+~import std/json
+~import std/io
+
+~app/httpc:get(url: "https://httpbin.org/get")
+| ok r |> std/json:get.string(json: r.body, key: "url")
+    | ok u |> std/io:print.ln("parsed url: {{ u:s }}") |> app/httpc:close(resp: r)
+    | not-found |> std/io:print.ln("url field not found (std/json:get.string is whitespace-naive — see holes/4)") |> app/httpc:close(resp: r)
+| err e |> std/io:print.ln("transport error: {{ e.msg:s }}")

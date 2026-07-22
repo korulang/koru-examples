@@ -1,0 +1,7 @@
+// NEGATIVE probe: bind the obligation-carrying value and use it WITHOUT
+// discharging. If the obligation is real, this must FAIL loudly.
+~import std/io
+~import app/calc_secure
+
+~app/calc_secure:calc-secure { 6 * 7 + 8 }
+| computed r |> std/io:print.ln("used without discharge = {{ r.value:d }}")

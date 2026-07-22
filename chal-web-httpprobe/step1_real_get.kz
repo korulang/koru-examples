@@ -1,0 +1,14 @@
+// Step 1 — a REAL HTTP GET over the wire, through this app's fresh httpc binding.
+// Proves the network boundary is reachable with the current-idiom `string` payload.
+// Cross-module `open!` obligation on `r` is discharged explicitly via close.
+
+~import app/httpc
+~import std/io
+
+~app/httpc:get(url: "https://httpbin.org/get")
+| ok r |> std/io:print.blk {
+    === real GET ===
+    status: {{ r.status:d }}
+    bytes:  {{ r.body.len:d }}
+    } |> app/httpc:close(resp: r)
+| err e |> std/io:print.ln("transport error: {{ e.msg:s }}")

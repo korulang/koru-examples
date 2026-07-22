@@ -1,0 +1,21 @@
+// oblig — Layer 3 wall-probe: a phantom OBLIGATION threaded through
+// TRANSFORM-SYNTHESIZED code. The calc_secure transform emits a runtime event
+// whose `computed { value: i64 }` payload field carries an issued obligation
+// ("checked!"). The consumer is then required to discharge it via `check`
+// (param `i64<!checked>`) before it can use the value.
+//
+// This composes THREE region organs at once: comptime transform (parse+emit)
+// + phantom obligation state + module boundary. Aiming past what the suite
+// proves today — no passing test issues an obligation from a transform-emitted
+// branch-payload field.
+
+~import std/io
+~import app/calc_secure
+
+~pub event check { v: i64<!checked> } -> i64
+~proc check|zig {
+    return v;
+}
+
+~app/calc_secure:calc-secure { 6 * 7 + 8 }
+| computed r |> check(v: r.value): out |> std/io:print.ln("checked 6*7+8 = {{ out:d }}")

@@ -1,0 +1,236 @@
+// calc_dsl — the exprlang comptime-transform, extracted into a PUBLIC library
+// module so a consumer in a different module can invoke it qualified
+// (`~app/calc_dsl:calc-secure { ... }`).
+//
+// This deliberately stresses the CROSS-MODULE comptime-transform path — the
+// same path the koru suite pins as fragile in
+// 200_COMPILER_FEATURES/210_PARSER/210_057_cross_module_comptime_callsite_fields
+// (TODO: cross-module comptime call sites drop the invocation/item raw-AST
+// fields that transform events require).
+
+const std = @import("std");
+
+~[comptime|transform]pub event calc-secure {
+    source: Source,
+    invocation: *const Invocation,
+    program: *const Program,
+    allocator: std.mem.Allocator
+}
+| transformed SiteResult
+| failed string
+
+~proc calc-secure|zig {
+    const ast = @import("ast");
+    const ast_functional = @import("ast_functional");
+
+    const src_text = source.text;
+    const source_location = source.location;
+
+    if (src_text.len == 0) {
+        return .{ .failed = "calc-secure: empty expression" };
+    }
+
+    const Eval = struct {
+        text: []const u8,
+        pos: usize,
+
+        fn skipWs(self: *@This()) void {
+            while (self.pos < self.text.len) {
+                const c = self.text[self.pos];
+                if (c == ' ' or c == '\t' or c == '\n' or c == '\r') {
+                    self.pos += 1;
+                } else break;
+            }
+        }
+
+        fn parseExpr(self: *@This()) i64 {
+            var acc = self.parseTerm();
+            while (true) {
+                self.skipWs();
+                if (self.pos >= self.text.len) break;
+                const c = self.text[self.pos];
+                if (c == '+') {
+                    self.pos += 1;
+                    acc += self.parseTerm();
+                } else if (c == '-') {
+                    self.pos += 1;
+                    acc -= self.parseTerm();
+                } else break;
+            }
+            return acc;
+        }
+
+        fn parseTerm(self: *@This()) i64 {
+            var acc = self.parseFactor();
+            while (true) {
+                self.skipWs();
+                if (self.pos >= self.text.len) break;
+                const c = self.text[self.pos];
+                if (c == '*') {
+                    self.pos += 1;
+                    acc *= self.parseFactor();
+                } else if (c == '/') {
+                    self.pos += 1;
+                    const d = self.parseFactor();
+                    acc = @divTrunc(acc, d);
+                } else break;
+            }
+            return acc;
+        }
+
+        fn parseFactor(self: *@This()) i64 {
+            self.skipWs();
+            if (self.pos < self.text.len and self.text[self.pos] == '(') {
+                self.pos += 1;
+                const v = self.parseExpr();
+                self.skipWs();
+                if (self.pos < self.text.len and self.text[self.pos] == ')') {
+                    self.pos += 1;
+                }
+                return v;
+            }
+            var acc: i64 = 0;
+            while (self.pos < self.text.len) {
+                const c = self.text[self.pos];
+                if (c >= '0' and c <= '9') {
+                    acc = acc * 10 + @as(i64, c - '0');
+                    self.pos += 1;
+                } else break;
+            }
+            return acc;
+        }
+    };
+
+    var ev = Eval{ .text = src_text, .pos = 0 };
+    const result: i64 = ev.parseExpr();
+
+    const proc_body = std.fmt.allocPrint(
+        allocator,
+        "return .{{ .computed = .{{ .value = {d} }} }};",
+        .{result},
+    ) catch unreachable;
+
+    // The invocation names the module it was called through; emit the runtime
+    // event+proc into that same module so the qualified call site resolves.
+    const target_module = allocator.dupe(u8, program.main_module_name) catch unreachable;
+
+    const path_segments = allocator.alloc([]const u8, 1) catch unreachable;
+    path_segments[0] = allocator.dupe(u8, "calc-secure") catch unreachable;
+
+    const calc_path = ast.DottedPath{
+        .module_qualifier = target_module,
+        .segments = path_segments,
+    };
+
+    const runtime_fields = allocator.alloc(ast.Field, 0) catch unreachable;
+    const runtime_event = ast.EventDecl{
+        .path = calc_path,
+        .input = ast.Shape{ .fields = runtime_fields },
+        .branches = &[_]ast.Branch{
+            ast.Branch{
+                .name = "computed",
+                .payload = ast.Shape{ .fields = &[_]ast.Field{
+                    ast.Field{
+                        .name = "value",
+                        .type = "i64",
+                        .module_path = null,
+                        .phantom = "checked!",
+                        .is_source = false,
+                        .is_file = false,
+                    },
+                } },
+                .is_optional = false,
+            },
+        },
+        .is_public = true,
+        .is_implicit_flow = false,
+        .annotations = &[_][]const u8{},
+        .is_pure = false,
+        .is_transitively_pure = false,
+        .location = source_location,
+        .module = target_module,
+    };
+
+    const runtime_proc = ast.ProcDecl{
+        .path = calc_path,
+        .body = ast.Source{ .text = proc_body, .location = source_location, .scope = .{ .bindings = &[_]ast.ScopeBinding{} }, .phantom_type = null },
+        .annotations = &[_][]const u8{},
+        .target = allocator.dupe(u8, "zig") catch unreachable,
+        .is_impl = true,
+        .location = source_location,
+        .module = target_module,
+    };
+
+    // Robust sizing: room for every original item plus the two we append.
+    const new_items = allocator.alloc(ast.Item, program.items.len + 2) catch unreachable;
+    var idx: usize = 0;
+    for (program.items) |prog_item| {
+        if (prog_item == .event_decl) {
+            const event = prog_item.event_decl;
+            if (event.path.segments.len == 1 and std.mem.eql(u8, event.path.segments[0], "calc-secure")) {
+                continue;
+            }
+        }
+        if (prog_item == .proc_decl) {
+            const proc = prog_item.proc_decl;
+            if (proc.path.segments.len == 1 and std.mem.eql(u8, proc.path.segments[0], "calc-secure")) {
+                continue;
+            }
+        }
+        if (prog_item == .flow) {
+            const flow = prog_item.flow;
+            const is_calc = flow.inv().path.segments.len == 1 and
+                std.mem.eql(u8, flow.inv().path.segments[0], "calc-secure");
+            if (is_calc) {
+                // Redirect the qualified call to the main module, where we
+                // emit the synthesized runtime event+proc (the lib's comptime
+                // event is not a rewritable item in this program view).
+                const transformed_path = ast.DottedPath{
+                    .module_qualifier = target_module,
+                    .segments = path_segments,
+                };
+                const annotations = allocator.alloc([]const u8, 1) catch unreachable;
+                annotations[0] = allocator.dupe(u8, "@pass_ran(\"transform\")") catch unreachable;
+                const new_invocation = ast.Invocation{
+                    .path = transformed_path,
+                    .args = &[_]ast.Arg{},
+                    .annotations = annotations,
+                    .inserted_by_tap = false,
+                    .from_opaque_tap = false,
+                };
+                const transformed_flow = ast.Flow{
+                    .body = ast.rootSite(new_invocation, flow.body.continuations, flow.location),
+                    .annotations = flow.annotations,
+                    .pre_label = flow.pre_label,
+                    .super_shape = flow.super_shape,
+                    .is_pure = flow.is_pure,
+                    .is_transitively_pure = flow.is_transitively_pure,
+                    .location = flow.location,
+                    .module = flow.module,
+                };
+                new_items[idx] = ast.Item{ .flow = transformed_flow };
+                idx += 1;
+                continue;
+            }
+        }
+        if (prog_item == .module_decl) {
+            new_items[idx] = prog_item;
+        } else {
+            new_items[idx] = ast_functional.cloneItem(allocator, &prog_item) catch unreachable;
+        }
+        idx += 1;
+    }
+
+    new_items[idx] = ast.Item{ .event_decl = runtime_event };
+    new_items[idx + 1] = ast.Item{ .proc_decl = runtime_proc };
+
+    const new_program = allocator.create(ast.Program) catch unreachable;
+    new_program.* = ast.Program{
+        .items = new_items,
+        .module_annotations = program.module_annotations,
+        .main_module_name = program.main_module_name,
+        .allocator = allocator,
+    };
+
+    return .{ .transformed = .{ .whole_program = new_program } };
+}
