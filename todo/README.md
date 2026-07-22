@@ -25,22 +25,37 @@ store: **add** (`from-page`→`take`→`insert`), **toggle** (`stored` the scala
 part — the **reactive feed**: `! inserted` and `! removed` interceptors that fire
 from inside the write path.
 
-## The convergence — the render bridge (option A: write-driven projection)
+## The convergence — the render bridge (`sweep` for the read, interceptors for the redraw)
 
-The renderer does **not** scan the store. It keeps a **projection** — a paint-list
-— maintained by the very interceptors above: `! inserted` appends, `! removed`
-drops, `stored`/`watch` update. `! draw` reads the projection and paints. This is
-the only bridge consistent with the store's soul (reactivity compiled into the
-write path, no reconciliation scan — `690_041`, ruling O13). An on-demand "read
-all rows" verb was considered and rejected: it's a scan, which the store refuses.
+Two primitives compose here; they are **not** competitors (an earlier version of
+this file wrongly picked a "projection" and rejected the read verb — that was a
+category error, corrected 2026-07-23):
+
+- **`std/store:sweep` — the render READ.** vaxis `! draw` is *full-repaint-on-
+  damage* (clear the buffer, repaint the whole retained scene on mount/resize),
+  so the renderer needs every live row each draw. `sweep` is the **momentary**
+  twin of `query`: "for each live row right now, project, run the body" — a
+  runtime read, legal in the nested `! draw` body. `! draw win |> sweep(todos)
+  ! sweep { label, done } |> write-at(…)`. (`690_067`, render-bridge session.)
+- **The interceptors — the redraw TRIGGER.** `! inserted`/`! removed`/`watch`
+  don't feed a paint-list; they signal *something changed, request a redraw*.
+
+`sweep` is a render read, **orthogonal** to the store's no-reconciliation-scan
+soul (that soul refuses scanning to compute *what changed* — reactivity is fused
+into writes; it does not refuse reading current state to paint it). The full loop:
+
+```
+store write → interceptor fires → request redraw → vaxis ! draw → sweep(store) → paint
+```
 
 ## Division of labor
 
 | Half | Owner | State |
 |------|-------|-------|
-| store / data (`todo_store.k`) | store thread | **done & runnable** |
+| store / data + interceptors (`todo_store.k`) | store thread | **done & runnable** |
+| `std/store:sweep` (the render read verb) | render-bridge session | in flight (`690_067` RED) |
 | render / layout (StackPanel · Dock · `! draw`) | vaxis thread | in progress |
-| the projection bridge (paint-list off the interceptors) | convergence | the seam |
+| wiring the loop above | convergence, here | awaits `sweep` |
 
-The store half is complete. What remains is the vaxis renderer maintaining its
-projection off these interceptors — then the north star is lit.
+The store half is complete. The north star lights when `sweep` lands and the
+renderer runs the loop above over this store.
