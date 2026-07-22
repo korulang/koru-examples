@@ -1,122 +1,136 @@
-# APP_CHALLENGE — grow the ecosystem-app catalog, shake the whole chain
+# APP_CHALLENGE — stress the toolchain, grow a pristine corpus
 
-This is a **replayable generator**, not a task. You run it from zero, it hands
-back one finished app, and it is never used up. The catalog of apps is the
-long-running artifact; each app is one slice through it. Every replay must
-produce something the catalog does not already contain — **variance is the
-single most important measure of success.**
+A **replayable generator**, not a task and not a backlog. You run it from zero,
+it hands back one increment of pristine koru plus a map of where the toolchain
+broke, and it is never used up.
 
-The apps are showcases (how to write koru *well*). But the reason this challenge
-exists is the side effect: an involved app, built the way a *user* builds it,
-**stresses the koru toolchain across a large slice of the chain at once** —
-parse → transform → phantom/obligation checking → emit → codegen → multi-package
-build → run — and shakes loose bugs the in-tree regression suite cannot reach.
-The app is the instrument; the toolchain is the product.
+## Purpose — explicit, and it is NOT the app
+
+Read this first, because the app is a **vehicle**, never the goal. This challenge
+exists for exactly two things, always:
+
+1. **Stress the toolchain to expose holes.** We reach *deliberately beyond* what
+   koru can do today. Where it breaks is the deliverable — a well-characterized,
+   pinned hole is worth more than a feature that compiled. Right now we *want* to
+   fail often; the failures are the map of what to fix next.
+2. **Grow a corpus of pristine koru** — idiomatic, exemplary code that future
+   sessions load as **context-candy**: the reference for how koru is *actually*
+   written well. This is why every surviving line has to be exemplary.
+
+We are **not building lazygit** or any clone (it exists; we're not chasing it —
+even if something like it is an eventual outcome). A real, ambitious app is the
+**pretext** — big enough to force many organs of the toolchain to work at once —
+and nothing more. The aspiration this whole model serves: that a challenger can
+one-shot apps like this in a couple of months. To get there we have to fail our
+way through the holes now.
+
+## The two consequences that follow from purpose
+
+**Failure is a valid — often the best — outcome of a replay.** "It builds" is NOT
+the gate. A replay succeeds when it yields *pristine code that landed* and/or *a
+precise pinned hole where the toolchain stopped you*. Aim high enough that you
+hit a wall; then characterize the wall exactly.
+
+**Route-around is doubly banned.** A change to the *app* to dodge a toolchain
+limitation — a wrapper, a rename, a scope hack, a qualified import, "just avoid
+that shape" — doesn't only lie about the toolchain; it **poisons the corpus**,
+teaching the next session the wrong idiom as truth. The clean code that CAN'T be
+written yet becomes a pinned hole. Never a hack. A precedent elsewhere does not
+sanction it.
 
 ---
 
 ## You are the contestant
 
-You ARE the contestant. Do **not** ask which app to build, which packages to use,
-or which direction to take. Read the catalog, pick a slice nobody has taken,
-name it, build it, ship it. A replay that pauses to ask has negated its own
-design.
+You ARE the contestant. Do not ask which app, which packages, which direction.
+Read the catalog, pick a slice nobody has taken, name it, reach past what you
+think the toolchain can do, and ship what lands + what broke. A replay that
+pauses to ask has negated its own design.
 
 ## The charge
 
-Build one **involved, idiomatic, runnable** koru application in
-`/Users/larsde/src/koru-examples/`, in its own directory, built **through the
-real toolchain** (`koruc` + the `koru-libs` packages consumed as a user consumes
-them — public surfaces, real build wiring), that **stresses a large slice of the
-chain**.
+Build one **ambitious, idiomatic** increment of a real koru application in
+`/Users/larsde/src/koru-examples/`, in its own directory, **through the real
+toolchain** (`koruc` + the `koru-libs` packages consumed as a user consumes them),
+that forces a **large slice of the chain** to work at once — and pushes it until
+something breaks.
 
-"Large slice" is the ambition bar, and it is non-negotiable — aim HIGH:
+The ambition bar is a hole-finder, so aim past comfort:
 
-- **Compose multiple subsystems**, not one. A single-package probe is too small.
-  Reach for apps that thread several organs together — persistence + rendering,
-  network + parsing + state, a reactive store + a real I/O source. The more
-  organs one app forces to interoperate, the more of the chain it stresses and
-  the more boundary bugs fall out.
+- **Compose multiple subsystems**, never one — persistence + rendering + network
+  + reactive state + subprocess. The more organs forced to interoperate, the more
+  boundary holes surface.
 - **Hit real I/O and real error surfaces** — files, sockets, a database, a
-  terminal, a subprocess. Programs that only compute in memory stress the front
-  of the chain but never the parts a real app lives or dies on.
-- **Exercise the hard language machinery** — obligations/phantom state across
-  module boundaries, the store's reactive write path, effect branches, comptime
-  transforms composing. If the app never makes the phantom checker or the emitter
-  work hard, aim higher.
-- **Be a real program a person would actually run**, not a demo of a feature. The
-  todo TUI, a web service, a log tailer, a small database explorer, a chat client,
-  a build tool, an HTTP API with a persistence layer — things with a point.
+  terminal, a subprocess.
+- **Make the hard machinery work hard** — obligations/phantom state across module
+  boundaries, the store's reactive write path, effect branches, comptime
+  transforms composing.
+- **Reach past today's toolchain.** If everything you tried compiled first try,
+  you aimed too low — go further until you find the wall.
 
-## Variance is the metric — diverge from the catalog
+Targets are **standing and iterable**, not finishable: a git TUI (vaxis
+components over a reactive `std/store`, driving real `git` subprocesses — the
+store↔vaxis convergence, aimed high), a DB explorer, an Orisha web service. Each
+replay adds one **working, divergent slice** to a target (a diff view, branch
+management, a request handler) — the app stays green and iterable between
+replays; you never leave it half-wired. The unit of a replay is *the increment
+that landed + the holes it hit*, not a finished app.
 
-Before you build, **read the existing catalog** (`challenges/CATALOG.md` and the
-app directories) and bring something it does not have. Diverge on the axes that
-matter for chain coverage:
+## Variance is the metric — cover different holes, harvest different idioms
 
-- **Subsystem mix** — a network app if the catalog is DB-heavy; a persistence app
-  if it's all rendering; pick the packages the catalog has exercised least.
-- **Composition shape** — a pipeline, a reactive loop, a request/response server,
-  a long-running daemon, a one-shot tool.
-- **Domain** — Orisha web apps, developer tools, data explorers, games, TUIs.
-
-If your app would stress the same slice as an existing one, pick a different
-slice. The fleet's job is to *cover the toolchain*, not to converge on the best
-todo app.
+Before building, **read the catalog** (`challenges/CATALOG.md` + the app
+directories) and take a slice it doesn't have. Diverge on the axes that matter:
+which subsystem mix, which composition shape, which target, which corner of the
+language. Contestants deepen a target on *different* organs so they surface
+*different* holes and *different* idioms — never converge on one file.
 
 ## Self-ground — never invent
 
 - **Koru syntax ground truth is the test suite**
-  (`/Users/larsde/src/koru/tests/regression`). Read a passing test for any
-  construct before you use it, or label it a guess. Do not synthesize koru from
-  analogy — that is how a replay produces a plausible lie.
+  (`/Users/larsde/src/koru/tests/regression`). Read a passing test before you use
+  a construct, or label it a guess. Synthesizing koru from analogy produces a
+  plausible lie — and a lie in the corpus is the exact poison purpose (2) forbids.
 - **The packages** live in `/Users/larsde/src/koru-libs` — read their public
-  surfaces (events, types) before composing them.
+  surfaces before composing them.
 - **The compiler** is `/Users/larsde/src/koru` (`zig build` → `zig-out/bin/koruc`).
 
-## The one law — inherited whole, and it is the point
+## Holes — float and pin, never fix, never route around
 
-**When the app hits a compiler / toolchain / codegen gap: FIX THE TOOLCHAIN.
-NEVER route around it in the app.**
+On a suspected hole, assume ~50% chance it's your own misunderstanding. **Float
+it**: write the exact program that fails, the koru-level error (or the raw-host
+leak — itself a defect), and "this might be me." **Pin it as a failing koru
+regression** (`/Users/larsde/src/koru/tests/regression/...`, MUST_RUN or
+MUST_FAIL as fits) so it lands on the board. Then stop — do **not** solo-fix the
+compiler, do **not** route around. The pinned hole is a first-class deliverable,
+ranked above the app compiling. We decide which holes to fix on the walk.
 
-- Renaming a binding, a wrapper, a scope hack, a qualified import, "just avoid
-  that shape" — any change to the *app* to dodge a toolchain limitation is the
-  banned route-around, even when it compiles. A precedent elsewhere does not
-  sanction it.
-- On a suspected gap, assume ~50% chance it's your own misunderstanding.
-  **FLOAT it** — write down the exact program that fails, the koru-level error (or
-  the raw-host leak, itself a defect), and "this might be me." Pin it as a failing
-  koru regression (`tests/regression/...`, MUST_RUN or MUST_FAIL as fits) so it
-  lands on the board. Then surface it — do NOT solo-fix the compiler and do NOT
-  route around it. The floated, pinned gap **is a first-class deliverable of this
-  challenge**, ranked above the app compiling.
-- A green app earned by dodging a gap is a lie about the toolchain it exists to
-  exercise — worth less than the honest red. Report the awkwardness; it is a
-  finding.
+## Done-gates — self-checked before you ship
 
-## Done-gates — objective, self-checked before you ship
-
-1. **It builds through `koruc`** — no route-around, no hand-edited emission.
-2. **It runs and does something real** — not silent, not degenerate, not a stub.
-   Show the actual output / behavior.
-3. **It's idiomatic** — every non-trivial construct grounded in a real passing
-   test; no invented syntax presented as fact.
-4. **It stresses a large slice** — names, explicitly, which subsystems/organs it
-   forces to interoperate and which parts of the chain it exercised hardest.
-5. **Every toolchain gap hit is floated + pinned** — listed with its pin id, or
-   an explicit "hit no gaps" (rare for an ambitious app; if you hit none, you
-   probably aimed too low).
-6. **Self-contained directory + a short README** — what it demonstrates, which
-   packages it exercises, how to build/run it, and the gaps it surfaced.
+1. **What landed builds through `koruc`** — no route-around, no hand-edited
+   emission — and **runs** (show real output). Zero lines of surviving code that
+   aren't pristine and grounded.
+2. **You reached a wall** — the hole(s) you hit are floated + pinned with ids, or
+   an explicit "hit no wall" (which means you aimed too low — say so).
+3. **It stresses a large slice** — name which subsystems/organs interoperated and
+   which parts of the chain worked hardest.
+4. **Self-contained directory + short README** — what it demonstrates, packages
+   exercised, how to build/run, and the holes it surfaced.
 
 ## The taste-gate — Lars
 
-The objective gates make each app releasable by construction. The final call —
-"yes, that's a real showcase AND it shook real bugs" — is Lars's, on the walk.
-Survivors append to the catalog; the rest evaporate with their worktrees.
+Objective gates make the surviving code pristine-by-construction and the holes
+real-by-construction. The final call — "yes, that's corpus-worthy AND it shook
+real holes" — is Lars's, on the walk. Survivors append to the catalog; the rest
+evaporate with their worktrees.
+
+## Slow-clock: this brief is re-cut as the toolchain matures
+
+Today's "reach past what it can do" becomes tomorrow's "compiles first try." When
+a class of hole is closed, **raise the ask** — re-cut this brief to demand more.
+The brief is governed like `SCENE.md`: read-many, write-rarely, deliberate,
+logged. Tuning the generator improves every future replay at once.
 
 ## Zero-friction append
 
-One directory per app, self-contained. Adding one costs no integration work:
-drop the dir, add a one-line entry to `challenges/CATALOG.md`. The right move
-(ship another) is the path of least resistance.
+One directory per app/increment, self-contained. Adding one costs no integration
+work: drop the dir, add a one-line entry to `challenges/CATALOG.md`.
