@@ -35,13 +35,16 @@ koru/vaxis:component(app) {
     </Dock>
 }
 
-// seed
+// seed — `| full` reissues owned columns so we free instead of leaking (690_077)
 std/string:from-page(text: "buy milk")
 | ok a |> std/string:take(s: a): m |> std/store:insert(todos) { label: m, done: 0 }
     | row _ |> std/string:from-page(text: "write koru")
         | ok b |> std/string:take(s: b): label
             |> std/store:insert(todos) { label, done: 0 }
                 | row _ |> _
+                | full f |> std/string:free(s: f.label)
+        | err _ |> _
+    | full f |> std/string:free(s: f.label)
 | err _ |> _
 
 koru/vaxis:run(title: "todo")
@@ -65,6 +68,7 @@ koru/vaxis:run(title: "todo")
 ! key k when k.ch == 'a' |> std/string:from-page(text: "new task")
     | ok a |> std/string:take(s: a): m |> std/store:insert(todos) { label: m, done: 0 }
         | row _ |> _
+        | full f |> std/string:free(s: f.label)
     | err _ |> _
 ! key k when k.ch == 'x' and ui.sel < todos.len |> std/store:take(todos[ui.sel])
     | item gone |> std/string:free(s: gone.label)
