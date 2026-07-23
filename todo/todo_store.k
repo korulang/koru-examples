@@ -13,7 +13,10 @@ import std/io
 import std/string
 import std/store
 
-std/store:new(todos, capacity: 16) { label: *std/string:String<std/string:instance!>, done: i64 }
+std/store:new(todos, capacity: 16) {
+    label: *std/string:String<instance!>,
+    done: i64
+}
 ! inserted { label } |> std/string:read(s: label): t |> std/io:print.ln("  + {{ t:s }}")
 ! removed  { label } |> std/string:read(s: label): t |> std/io:print.ln("  - {{ t:s }}")
 

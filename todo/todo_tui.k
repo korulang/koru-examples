@@ -1,14 +1,38 @@
-// todo — the reactive to-do TUI. The RENDER half wired to the store half:
-// the store owns the todos; `! draw` sweeps the live rows and paints each;
-// `! inserted`/`! removed` (in todo_store.k's model) are the redraw trigger.
-// This is the render bridge lit: store write -> interceptor -> redraw ->
-// ! draw -> sweep(todos) -> paint. `q` to quit.
+// todo — the reactive to-do TUI. Flagship convergence: std/store + vaxis
+// components. Dock chrome, todo-row components, sweep as the render READ.
+// Key-handler loop already full-repaints (! draw after every key) — so
+// insert/take are the redraw trigger for free. Break the toolchain, fix it.
+//
+//   koruc run todo_tui.k
 import std/io
 import std/string
 import std/store
 import koru/vaxis
 
-std/store:new(todos, capacity: 16) { label: *std/string:String<std/string:instance!>, done: i64 }
+std/store:new(todos, capacity: 16) {
+    label: *std/string:String<instance!>,
+    done: i64
+}
+
+koru/vaxis:component(todo-row) {
+    <text>{{ text:s }}</text>
+}
+
+koru/vaxis:component(topbar) {
+    <text>{{ title:s }}</text>
+}
+
+koru/vaxis:component(statusbar) {
+    <text>{{ hint:s }}</text>
+}
+
+// Chrome — live rows paint into the fill band on the same ! draw (one scene).
+koru/vaxis:component(app) {
+    <Dock>
+        <topbar dock="top" h="1" title="== todo =="/>
+        <statusbar dock="bottom" h="1" hint="q quit | a add | x delete first"/>
+    </Dock>
+}
 
 // seed two todos
 std/string:from-page(text: "buy milk")
@@ -20,9 +44,12 @@ std/string:from-page(text: "buy milk")
 | err _ |> _
 
 koru/vaxis:run(title: "todo")
-! draw w |> std/store:sweep(todos)
+! draw w |> app(win: w)
+    |> koru/vaxis:sub-fill(parent: w, top: 1, bottom: 1): body
+    |> std/store:sweep(todos)
     ! sweep { entity.label, row } |> std/string:read(s: label): text
-        |> koru/vaxis:write-at(x: 2, y: @as(u16, @intCast(row)))
+        |> koru/vaxis:sub(parent: body, x: 0, y: @as(u16, @intCast(row)), w: 0, h: 1): rw
+            |> todo-row(win: rw, text)
 ! key k when k.ch == 'q' |> koru/vaxis:quit()
 ! key k when k.ch == 'a' |> std/string:from-page(text: "new task")
     | ok a |> std/string:take(s: a): m |> std/store:insert(todos) { label: m, done: 0 }
