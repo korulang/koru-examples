@@ -8,7 +8,8 @@
 //   koruc run gallery.k
 //
 // n/p next/prev · space poke progress · type on text-input ·
-// j/k catalog|list|table · type textarea · j/k/d/u/g/G viewport · h/l paginator · ? help · q quit
+// j/k catalog|list|table · type textarea · j/k/d/u/g/G viewport · h/l paginator ·
+// ? help · space/s/r clocks · q quit
 
 import std/io
 import std/string
@@ -16,15 +17,23 @@ import std/store
 import koru/vaxis
 
 // page: 0 catalog · 1 progress · 2 spinner · 3 text-input · 4 list ·
-//       5 viewport · 6 paginator · 7 help · 8 table · 9 textarea · 10 style
+//       5 viewport · 6 paginator · 7 help · 8 table · 9 textarea ·
+//       10 clocks · 11 style
 std/store:new(ui) { page: 0[i64], value: 40[i64], ms: 0[i64] }
 std/store:new(buf, capacity: 2) { text: *std/string:String<instance!> }
-std/store:new(catalog) { selected: 0[i64], count: 10[i64] }
+std/store:new(catalog) { selected: 0[i64], count: 11[i64] }
 std/store:new(list) { selected: 0[i64], count: 28[i64] }
 std/store:new(scroll) { y: 0[i64], count: 41[i64] }
 std/store:new(pager) { page: 0[i64], total: 7[i64] }
 std/store:new(help) { show: 0[i64] }
 std/store:new(table) { selected: 0[i64], count: 20[i64] }
+std/store:new(clock) {
+    remaining: 15000[i64],
+    elapsed: 0[i64],
+    last_t: 0[i64],
+    last_s: 0[i64],
+    running: 1[i64]
+}
 
 koru/vaxis:component(topbar) {
     <text>{{ title:s }}</text>
@@ -127,6 +136,19 @@ koru/vaxis:component(textarea-exhibit) {
     </dock>
 }
 
+koru/vaxis:component(clocks-exhibit) {
+    <dock>
+        <topbar dock="top" h="1" title="gallery · timer / stopwatch"/>
+        <statusbar dock="bottom" h="1" hint="space/s pause · r reset · n/p · q"/>
+        <stack-panel dock="fill">
+            <cap text="timer"/>
+            <timer remaining_ms={{ remaining:d }} running={{ t_running:d }}/>
+            <cap text="stopwatch"/>
+            <stopwatch elapsed_ms={{ elapsed:d }} running={{ s_running:d }}/>
+        </stack-panel>
+    </dock>
+}
+
 koru/vaxis:component(style-exhibit) {
     <dock>
         <topbar dock="top" h="1" title="gallery · style"/>
@@ -145,7 +167,7 @@ koru/vaxis:run(title: "gallery")
 ! draw w |> if(ui.page == 0)
     | then |> catalog-exhibit(win: w,
         title: "Charm / vaxis catalog",
-        items: "progress — ▌/░ meter, purple→pink\nspinner — MiniDot braille + tick\ntext-input — prompt, placeholder, blink\nlist — selection + ●/○ paginator\nviewport — scrollable content slice\npaginator — Dots + Arabic status chrome\nhelp — short • line / full column\ntable — header, pink row, … truncate\ntextarea — multi-line ┃ gutter + blink\nstyle — Style fg/bg + UTF-8 runes",
+        items: "progress — ▌/░ meter, purple→pink\nspinner — MiniDot braille + tick\ntext-input — prompt, placeholder, blink\nlist — selection + ●/○ paginator\nviewport — scrollable content slice\npaginator — Dots + Arabic status chrome\nhelp — short • line / full column\ntable — header, pink row, … truncate\ntextarea — multi-line ┃ gutter + blink\ntimer / stopwatch — countdown + count-up\nstyle — Style fg/bg + UTF-8 runes",
         catalog.selected)
     | else |> if(ui.page == 1)
         | then |> progress-exhibit(win: w, ui.value, max: 100)
@@ -182,15 +204,30 @@ koru/vaxis:run(title: "gallery")
                                             |> std/store:sweep(buf)
                                             ! sweep { buf: entity.text } |> std/string:read(s: buf): value
                                                 |> textarea-exhibit(win: root, value, ui.ms)
-                                        | else |> style-exhibit(win: w)
-                                            |> koru/vaxis:write-styled(x: 2, y: 3, text: "▌▌▌▌▌▌░░░░░░  half-block  #5A56E0", style: { fg: 0x5A56E0 })
-                                            |> koru/vaxis:write-styled(x: 2, y: 5, text: "████████░░░░  block  pink on slate", style: { fg: 0xEE6FF8, bg: 0x606060 })
+                                        | else |> if(ui.page == 10)
+                                            | then |> clocks-exhibit(win: w,
+                                                clock.remaining, t_running: clock.running,
+                                                clock.elapsed, s_running: clock.running)
+                                            | else |> style-exhibit(win: w)
+                                                |> koru/vaxis:write-styled(x: 2, y: 3, text: "▌▌▌▌▌▌░░░░░░  half-block  #5A56E0", style: { fg: 0x5A56E0 })
+                                                |> koru/vaxis:write-styled(x: 2, y: 5, text: "████████░░░░  block  pink on slate", style: { fg: 0xEE6FF8, bg: 0x606060 })
 ! tick ms |> std/store:stored { ui.ms: ms }
+! tick ms when clock.last_t == 0 |> std/store:stored { clock.last_t: ms }
+! tick ms when clock.running == 1 and clock.remaining > 0 and clock.last_t > 0 |> std/store:stored { clock.remaining: clock.remaining - (ms - clock.last_t), clock.last_t: ms }
+! tick ms when clock.last_t > 0 |> std/store:stored { clock.last_t: ms }
+! tick ms when clock.last_s == 0 |> std/store:stored { clock.last_s: ms }
+! tick ms when clock.running == 1 and clock.last_s > 0 |> std/store:stored { clock.elapsed: clock.elapsed + (ms - clock.last_s), clock.last_s: ms }
+! tick ms when clock.last_s > 0 |> std/store:stored { clock.last_s: ms }
 ! key k when k.ch == 'q' and ui.page != 3 and ui.page != 9 |> koru/vaxis:quit()
 ! key k when k.ch == 27 and ui.page == 3 |> koru/vaxis:quit()
 ! key k when k.ch == 27 and ui.page == 9 |> koru/vaxis:quit()
-! key k when k.ch == 'n' and ui.page < 10 |> std/store:stored { ui.page: ui.page + 1 }
+! key k when k.ch == 'n' and ui.page < 11 |> std/store:stored { ui.page: ui.page + 1 }
 ! key k when k.ch == 'p' and ui.page > 0 |> std/store:stored { ui.page: ui.page - 1 }
+! key k when ui.page == 10 and k.ch == ' ' and clock.running == 1 |> std/store:stored { clock.running: 0 }
+! key k when ui.page == 10 and k.ch == ' ' and clock.running == 0 |> std/store:stored { clock.running: 1 }
+! key k when ui.page == 10 and k.ch == 's' and clock.running == 1 |> std/store:stored { clock.running: 0 }
+! key k when ui.page == 10 and k.ch == 's' and clock.running == 0 |> std/store:stored { clock.running: 1 }
+! key k when ui.page == 10 and k.ch == 'r' |> std/store:stored { clock.remaining: 15000, clock.elapsed: 0 }
 ! key k when ui.page == 0 and k.ch == 'j' and catalog.selected < catalog.count - 1 |> std/store:stored { catalog.selected: catalog.selected + 1 }
 ! key k when ui.page == 0 and k.ch == 'k' and catalog.selected > 0 |> std/store:stored { catalog.selected: catalog.selected - 1 }
 ! key k when k.ch == ' ' and ui.page == 1 and ui.value < 100 |> std/store:stored { ui.value: ui.value + 10 }

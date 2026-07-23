@@ -14,7 +14,8 @@ cd gallery && koruc run gallery.k
 |-----|--------|
 | `n` / `p` | next / prev exhibit |
 | `j` / `k` | peek on **catalog** / **list** / **table**; line on **viewport** |
-| `space` | poke progress (+10, wraps) |
+| `space` | poke progress (+10, wraps); pause/resume **clocks** |
+| `s` / `r` | pause/resume / reset on **clocks** |
 | type / backspace | edit on **text-input** / **textarea** |
 | enter | newline on **textarea** |
 | `d` / `u` / `g` / `G` | viewport half-page / ends; `g`/`G` also **table** |
@@ -36,4 +37,5 @@ cd gallery && koruc run gallery.k
 | **help** | `<help/>` |
 | **table** | `<table/>` |
 | **textarea** | `<textarea/>` — multi-line ┃ gutter + blink |
+| **clocks** | `<timer/>` + `<stopwatch/>` — countdown + count-up |
 | **style** | Style swatches |
