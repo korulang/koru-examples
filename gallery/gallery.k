@@ -6,20 +6,21 @@
 //   koruc run gallery.k
 //
 // n/p next/prev · space poke progress · type on text-input ·
-// j/k list · j/k/d/u/g/G viewport · h/l paginator · ? help · q quit
+// j/k list|table · j/k/d/u/g/G viewport · h/l paginator · ? help · q quit
 
 import std/io
 import std/string
 import std/store
 import koru/vaxis
 
-// page: 0 progress · 1 spinner · 2 text-input · 3 list · 4 viewport · 5 paginator · 6 help · 7 style
+// page: 0 progress · 1 spinner · 2 text-input · 3 list · 4 viewport · 5 paginator · 6 help · 7 table · 8 style
 std/store:new(ui) { page: 0[i64], value: 40[i64], ms: 0[i64] }
 std/store:new(buf, capacity: 2) { text: *std/string:String<instance!> }
 std/store:new(list) { selected: 0[i64], count: 28[i64] }
 std/store:new(scroll) { y: 0[i64], count: 41[i64] }
 std/store:new(pager) { page: 0[i64], total: 7[i64] }
 std/store:new(help) { show: 0[i64] }
+std/store:new(table) { selected: 0[i64], count: 20[i64] }
 
 koru/vaxis:component(topbar) {
     <text>{{ title:s }}</text>
@@ -97,6 +98,15 @@ koru/vaxis:component(help-exhibit) {
     </dock>
 }
 
+
+koru/vaxis:component(table-exhibit) {
+    <dock>
+        <topbar dock="top" h="1" title="gallery · table"/>
+        <statusbar dock="bottom" h="1" hint="j/k move · g/G ends · n/p · q"/>
+        <table dock="fill" headers={{ headers:s }} widths={{ widths:s }} rows={{ rows:s }} selected={{ selected:d }}/>
+    </dock>
+}
+
 koru/vaxis:component(style-exhibit) {
     <dock>
         <topbar dock="top" h="1" title="gallery · style"/>
@@ -136,13 +146,19 @@ koru/vaxis:run(title: "gallery")
                             | then |> help-exhibit(win: w,
                                 bindings: "↑/k:up\n↓/j:down\n←/h:prev page\n→/l:next page\ng:go to start\nG:go to end\n/:filter\n?:toggle help\nq:quit",
                                 help.show)
-                            | else |> style-exhibit(win: w)
-                                |> koru/vaxis:write-styled(x: 2, y: 3, text: "▌▌▌▌▌▌░░░░░░  half-block  #5A56E0", style: { fg: 0x5A56E0 })
-                                |> koru/vaxis:write-styled(x: 2, y: 5, text: "████████░░░░  block  pink on slate", style: { fg: 0xEE6FF8, bg: 0x606060 })
+                            | else |> if(ui.page == 7)
+                                | then |> table-exhibit(win: w,
+                                    headers: "Rank|City|Country|Population",
+                                    widths: "4|16|8|10",
+                                    rows: "1|Tokyo|Japan|37,274,000\n2|Delhi|India|32,065,760\n3|Shanghai|China|28,516,904\n4|Dhaka|Bangladesh|22,478,116\n5|São Paulo|Brazil|22,429,800\n6|Mexico City|Mexico|22,085,140\n7|Cairo|Egypt|21,750,020\n8|Beijing|China|21,333,332\n9|Mumbai|India|20,961,472\n10|Osaka|Japan|19,059,856\n11|Chongqing|China|16,874,740\n12|Karachi|Pakistan|16,839,950\n13|Istanbul|Turkey|15,636,243\n14|Kinshasa|DR Congo|15,628,085\n15|Lagos|Nigeria|15,387,639\n16|Buenos Aires|Argentina|15,369,919\n17|Kolkata|India|15,133,888\n18|Manila|Philippines|14,406,059\n19|Tianjin|China|13,589,078\n20|Guangzhou|China|13,301,532",
+                                    table.selected)
+                                | else |> style-exhibit(win: w)
+                                    |> koru/vaxis:write-styled(x: 2, y: 3, text: "▌▌▌▌▌▌░░░░░░  half-block  #5A56E0", style: { fg: 0x5A56E0 })
+                                    |> koru/vaxis:write-styled(x: 2, y: 5, text: "████████░░░░  block  pink on slate", style: { fg: 0xEE6FF8, bg: 0x606060 })
 ! tick ms |> std/store:stored { ui.ms: ms }
 ! key k when k.ch == 'q' and ui.page != 2 |> koru/vaxis:quit()
 ! key k when k.ch == 27 and ui.page == 2 |> koru/vaxis:quit()
-! key k when k.ch == 'n' and ui.page < 7 |> std/store:stored { ui.page: ui.page + 1 }
+! key k when k.ch == 'n' and ui.page < 8 |> std/store:stored { ui.page: ui.page + 1 }
 ! key k when k.ch == 'p' and ui.page > 0 |> std/store:stored { ui.page: ui.page - 1 }
 ! key k when k.ch == ' ' and ui.page == 0 and ui.value < 100 |> std/store:stored { ui.value: ui.value + 10 }
 ! key k when k.ch == ' ' and ui.page == 0 and ui.value >= 100 |> std/store:stored { ui.value: 0 }
@@ -158,6 +174,10 @@ koru/vaxis:run(title: "gallery")
 ! key k when ui.page == 4 and k.ch == 'G' and scroll.y < scroll.count - 1 |> std/store:stored { scroll.y: scroll.count - 1 }
 ! key k when ui.page == 5 and k.ch == 'l' and pager.page < pager.total - 1 |> std/store:stored { pager.page: pager.page + 1 }
 ! key k when ui.page == 5 and k.ch == 'h' and pager.page > 0 |> std/store:stored { pager.page: pager.page - 1 }
+! key k when ui.page == 7 and k.ch == 'j' and table.selected < table.count - 1 |> std/store:stored { table.selected: table.selected + 1 }
+! key k when ui.page == 7 and k.ch == 'k' and table.selected > 0 |> std/store:stored { table.selected: table.selected - 1 }
+! key k when ui.page == 7 and k.ch == 'g' and table.selected > 0 |> std/store:stored { table.selected: 0 }
+! key k when ui.page == 7 and k.ch == 'G' and table.selected < table.count - 1 |> std/store:stored { table.selected: table.count - 1 }
 ! key k when ui.page == 6 and k.ch == '?' and help.show == 0 |> std/store:stored { help.show: 1 }
 ! key k when ui.page == 6 and k.ch == '?' and help.show == 1 |> std/store:stored { help.show: 0 }
 ! key k when ui.page == 2 and k.ch == 127 |> std/store:take(buf[0])
