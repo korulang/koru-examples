@@ -10,15 +10,15 @@ cd gallery && koruc run gallery.k
 | Key | Action |
 |-----|--------|
 | `n` / `p` | next / prev exhibit |
-| `space` | poke (progress +10, wraps at 100) |
-| `q` | quit |
+| `space` | poke progress (+10, wraps) |
+| type / backspace | edit on **text-input** page |
+| `q` (or `esc` on text-input) | quit |
 
-## Exhibits (grows with the Charm queue)
+## Exhibits
 
 | Page | What you see |
 |------|----------------|
-| **progress** | Charm-class `<progress-bar/>` — ▌/░, purple→pink blend, `%` |
-| **spinner** | Charm MiniDot `<spinner/>` — braille cycle, purple, `! tick` |
-| **style** | `Style` fg/bg swatches + UTF-8 meter runes |
-
-New Charm widgets land here when they clear the taste-gate.
+| **progress** | `<progress-bar/>` — ▌/░, purple→pink, `%` |
+| **spinner** | `<spinner/>` — MiniDot braille, purple, tick |
+| **text-input** | `<text-input/>` — prompt, placeholder, blink cursor, scroll |
+| **style** | `Style` fg/bg swatches + UTF-8 runes |
