@@ -30,11 +30,11 @@ koru/vaxis:component(statusbar) {
 }
 
 koru/vaxis:component(app) {
-    <Dock>
+    <dock>
         <topbar dock="top" h="1" title="== todo =="/>
         <statusbar dock="bottom" h="1" hint="j/k | space | a add | r rename | x del | q"/>
-        <StackPanel dock="fill"/>
-    </Dock>
+        <stack-panel dock="fill"/>
+    </dock>
 }
 
 // seed todos + empty draft buffer
