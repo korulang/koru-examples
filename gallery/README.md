@@ -1,7 +1,10 @@
 # gallery — sit and look
 
-The eyes for `koru-libs` COMPONENT_CHALLENGE polish. Page through catalog
-exhibits in a real TTY. **You** cast out the bad stuff — no pre-merge taste gate.
+The eyes for `koru-libs` COMPONENT_CHALLENGE polish. **You** cast out the bad
+stuff — no pre-merge taste gate.
+
+Landing page is an informational `<list/>` of the catalog (j/k only moves the
+highlight — it does **not** jump exhibits). `n` / `p` page the tour.
 
 ```bash
 cd gallery && koruc run gallery.k
@@ -10,24 +13,25 @@ cd gallery && koruc run gallery.k
 | Key | Action |
 |-----|--------|
 | `n` / `p` | next / prev exhibit |
+| `j` / `k` | peek on **catalog** / **list** / **table**; line on **viewport** |
 | `space` | poke progress (+10, wraps) |
-| type / backspace | edit on **text-input** page |
-| `j` / `k` | **list** / **table** / **viewport** line |
-| `d` / `u` / `g` / `G` | half-page / ends (**viewport**); `g`/`G` also **table** ends |
-| `h` / `l` | page on **paginator** |
-| `?` | short/full on **help** |
+| type / backspace | edit on **text-input** |
+| `d` / `u` / `g` / `G` | viewport half-page / ends; `g`/`G` also **table** |
+| `h` / `l` | **paginator** |
+| `?` | **help** short/full |
 | `q` (or `esc` on text-input) | quit |
 
 ## Exhibits
 
 | Page | What you see |
 |------|----------------|
-| **progress** | `<progress-bar/>` — ▌/░, purple→pink, `%` |
-| **spinner** | `<spinner/>` — MiniDot braille, purple, tick |
-| **text-input** | `<text-input/>` — prompt, placeholder, blink cursor, scroll |
-| **list** | `<list/>` — Charm simple delegate, pink `>`, ●/○ paginator |
-| **viewport** | `<viewport/>` — scrollable slice, hard-clip, host offset |
-| **paginator** | `<paginator/>` — Dots ●/○ + Arabic `N/M`, pink ActiveDot |
-| **help** | `<help/>` — short ` • ` line + full column, `?` toggle |
-| **table** | `<table/>` — header, pink selected row, `…` truncate |
-| **style** | `Style` fg/bg swatches + UTF-8 runes |
+| **catalog** | informational `<list/>` of every exhibit |
+| **progress** | `<progress-bar/>` |
+| **spinner** | `<spinner/>` |
+| **text-input** | `<text-input/>` |
+| **list** | dinner-menu `<list/>` |
+| **viewport** | `<viewport/>` |
+| **paginator** | `<paginator/>` Dots + Arabic |
+| **help** | `<help/>` |
+| **table** | `<table/>` |
+| **style** | Style swatches |
