@@ -47,9 +47,10 @@ std/string:from-page(text: "buy milk")
 koru/vaxis:run(title: "todo")
 ! draw w |> app(win: w)
     |> koru/vaxis:sub-fill(parent: w, top: 1, bottom: 1): body
+    |> koru/vaxis:stack(parent: body): panel
     |> std/store:sweep(todos)
     ! sweep { entity.label, entity.done, row } |> std/string:read(s: label): text
-        |> koru/vaxis:sub(parent: body, x: 0, y: @as(u16, @intCast(row)), w: 0, h: 1): rw
+        |> koru/vaxis:stack-row(stack: panel): rw
         |> if(row == ui.sel)
         | then |> if(done == 1)
             | then |> std/fmt:ln("> [x] {{ text:s }}"): line |> todo-row(win: rw, line.text)
@@ -58,14 +59,14 @@ koru/vaxis:run(title: "todo")
             | then |> std/fmt:ln("  [x] {{ text:s }}"): line |> todo-row(win: rw, line.text)
             | else |> std/fmt:ln("  [ ] {{ text:s }}"): line |> todo-row(win: rw, line.text)
 ! key k when k.ch == 'q' |> koru/vaxis:quit()
-! key k when k.ch == 'j' |> std/store:stored { ui.sel: ui.sel + 1 }
+! key k when k.ch == 'j' and ui.sel + 1 < todos.len |> std/store:stored { ui.sel: ui.sel + 1 }
 ! key k when k.ch == 'k' and ui.sel > 0 |> std/store:stored { ui.sel: ui.sel - 1 }
-! key k when k.ch == ' ' |> std/store:stored { todos[ui.sel].done: 1 - todos[ui.sel].done }
+! key k when k.ch == ' ' and ui.sel < todos.len |> std/store:stored { todos[ui.sel].done: 1 - todos[ui.sel].done }
 ! key k when k.ch == 'a' |> std/string:from-page(text: "new task")
     | ok a |> std/string:take(s: a): m |> std/store:insert(todos) { label: m, done: 0 }
         | row _ |> _
     | err _ |> _
-! key k when k.ch == 'x' |> std/store:take(todos[ui.sel])
+! key k when k.ch == 'x' and ui.sel < todos.len |> std/store:take(todos[ui.sel])
     | item gone |> std/string:free(s: gone.label)
         |> if(ui.sel > 0)
         | then |> std/store:stored { ui.sel: ui.sel - 1 }
