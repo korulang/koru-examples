@@ -1,1 +1,9 @@
-{ "name": "todo", "version": "0.1.0", "entry": "todo_store.k" }
+{
+  "name": "todo",
+  "version": "0.1.0",
+  "entry": "todo_store.k",
+  "paths": {
+    "koru": "../../koru-libs",
+    "libs": "../../koru-libs"
+  }
+}
