@@ -15,6 +15,7 @@ cd gallery && koruc run gallery.k
 | `j` / `k` | selection on **list**; line scroll on **viewport** |
 | `d` / `u` / `g` / `G` | half-page / ends on **viewport** |
 | `h` / `l` | page on **paginator** |
+| `?` | short/full on **help** |
 | `q` (or `esc` on text-input) | quit |
 
 ## Exhibits
@@ -27,4 +28,5 @@ cd gallery && koruc run gallery.k
 | **list** | `<list/>` — Charm simple delegate, pink `>`, ●/○ paginator |
 | **viewport** | `<viewport/>` — scrollable slice, hard-clip, host offset |
 | **paginator** | `<paginator/>` — Dots ●/○ + Arabic `N/M`, pink ActiveDot |
+| **help** | `<help/>` — short ` • ` line + full column, `?` toggle |
 | **style** | `Style` fg/bg swatches + UTF-8 runes |
