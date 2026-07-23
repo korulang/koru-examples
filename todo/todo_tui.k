@@ -27,4 +27,7 @@ koru/vaxis:run(title: "todo")
     | ok a |> std/string:take(s: a): m |> std/store:insert(todos) { label: m, done: 0 }
         | row _ |> _
     | err _ |> _
+! key k when k.ch == 'x' |> std/store:take(todos[0])
+    | item gone |> std/string:free(s: gone.label)
+    | empty |> _
 | err e |> std/io:print.ln("vaxis failed: {{ e:s }}")
