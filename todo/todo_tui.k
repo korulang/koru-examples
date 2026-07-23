@@ -1,5 +1,5 @@
-// todo — reactive TUI. Dock chrome + sweep rows; j/k select, space toggle,
-// a add, x delete, r rename (type + enter/esc), q quit. Battering ram.
+// todo — reactive TUI. Dock chrome + live StackPanel fill; j/k select,
+// space toggle, a add, x delete, r rename, q quit. Battering ram.
 //
 //   koruc run todo_tui.k
 import std/io
@@ -33,6 +33,7 @@ koru/vaxis:component(app) {
     <Dock>
         <topbar dock="top" h="1" title="== todo =="/>
         <statusbar dock="bottom" h="1" hint="j/k | space | a add | r rename | x del | q"/>
+        <StackPanel dock="fill"/>
     </Dock>
 }
 
@@ -53,9 +54,7 @@ std/string:from-page(text: "buy milk")
 | err _ |> _
 
 koru/vaxis:run(title: "todo")
-! draw w |> app(win: w)
-    |> koru/vaxis:sub-fill(parent: w, top: 1, bottom: 1): body
-    |> koru/vaxis:stack(parent: body): panel
+! draw w |> app(win: w): panel
     |> std/store:sweep(todos)
     ! sweep { entity.label, entity.done, row } |> std/string:read(s: label): text
         |> koru/vaxis:stack-row(stack: panel): rw
