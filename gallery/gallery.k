@@ -11,8 +11,8 @@ import std/io
 import std/store
 import koru/vaxis
 
-// page: 0 = progress, 1 = style swatches
-std/store:new(ui) { page: 0[i64], value: 40[i64] }
+// page: 0 = progress, 1 = spinner, 2 = style swatches
+std/store:new(ui) { page: 0[i64], value: 40[i64], ms: 0[i64] }
 
 koru/vaxis:component(topbar) {
     <text>{{ title:s }}</text>
@@ -35,7 +35,16 @@ koru/vaxis:component(progress-exhibit) {
     </dock>
 }
 
-// Exhibit 1 — chrome only; colored swatches painted in ! draw (Style.fg/bg)
+// Exhibit 1 — Charm MiniDot spinner (tick-driven)
+koru/vaxis:component(spinner-exhibit) {
+    <dock>
+        <topbar dock="top" h="1" title="gallery · spinner"/>
+        <statusbar dock="bottom" h="1" hint="n/p exhibits · q"/>
+        <spinner dock="fill" ms={{ ms:d }}/>
+    </dock>
+}
+
+// Exhibit 2 — chrome only; colored swatches painted in ! draw (Style.fg/bg)
 koru/vaxis:component(style-exhibit) {
     <dock>
         <topbar dock="top" h="1" title="gallery · style"/>
@@ -47,11 +56,14 @@ koru/vaxis:component(style-exhibit) {
 koru/vaxis:run(title: "gallery")
 ! draw w |> if(ui.page == 0)
     | then |> progress-exhibit(win: w, ui.value, max: 100)
-    | else |> style-exhibit(win: w)
-        |> koru/vaxis:write-styled(x: 2, y: 3, text: "▌▌▌▌▌▌░░░░░░  half-block  #5A56E0", style: { fg: 0x5A56E0 })
-        |> koru/vaxis:write-styled(x: 2, y: 5, text: "████████░░░░  block  pink on slate", style: { fg: 0xEE6FF8, bg: 0x606060 })
+    | else |> if(ui.page == 1)
+        | then |> spinner-exhibit(win: w, ui.ms)
+        | else |> style-exhibit(win: w)
+            |> koru/vaxis:write-styled(x: 2, y: 3, text: "▌▌▌▌▌▌░░░░░░  half-block  #5A56E0", style: { fg: 0x5A56E0 })
+            |> koru/vaxis:write-styled(x: 2, y: 5, text: "████████░░░░  block  pink on slate", style: { fg: 0xEE6FF8, bg: 0x606060 })
+! tick ms |> std/store:stored { ui.ms: ms }
 ! key k when k.ch == 'q' |> koru/vaxis:quit()
-! key k when k.ch == 'n' and ui.page < 1 |> std/store:stored { ui.page: ui.page + 1 }
+! key k when k.ch == 'n' and ui.page < 2 |> std/store:stored { ui.page: ui.page + 1 }
 ! key k when k.ch == 'p' and ui.page > 0 |> std/store:stored { ui.page: ui.page - 1 }
 ! key k when k.ch == ' ' and ui.page == 0 and ui.value < 100 |> std/store:stored { ui.value: ui.value + 10 }
 ! key k when k.ch == ' ' and ui.page == 0 and ui.value >= 100 |> std/store:stored { ui.value: 0 }

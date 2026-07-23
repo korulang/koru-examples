@@ -18,7 +18,7 @@ cd gallery && koruc run gallery.k
 | Page | What you see |
 |------|----------------|
 | **progress** | Charm-class `<progress-bar/>` — ▌/░, purple→pink blend, `%` |
+| **spinner** | Charm MiniDot `<spinner/>` — braille cycle, purple, `! tick` |
 | **style** | `Style` fg/bg swatches + UTF-8 meter runes |
 
-New Charm widgets land here when they clear the taste-gate — not as orphan
-`component_*.k` one-shots only.
+New Charm widgets land here when they clear the taste-gate.
