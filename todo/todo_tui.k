@@ -14,14 +14,15 @@ std/store:new(todos, capacity: 16) { label: *std/string:String<std/string:instan
 std/string:from-page(text: "buy milk")
 | ok a |> std/string:take(s: a): m |> std/store:insert(todos) { label: m, done: 0 }
     | row _ |> std/string:from-page(text: "write koru")
-        | ok b |> std/string:take(s: b): k |> std/store:insert(todos) { label: k, done: 0 }
-            | row _ |> _
-        | err _ |> _
+        | ok b |> std/string:take(s: b): label
+            |> std/store:insert(todos) { label, done: 0 }
+                | row _ |> _
 | err _ |> _
 
 koru/vaxis:run(title: "todo")
 ! draw w |> std/store:sweep(todos)
-    ! sweep { entity.label, row } |> std/string:read(s: label): t |> koru/vaxis:write-at(x: 2, y: @as(u16, @intCast(row)), text: t)
+    ! sweep { entity.label, row } |> std/string:read(s: label): text
+        |> koru/vaxis:write-at(x: 2, y: @as(u16, @intCast(row)))
 ! key k when k.ch == 'q' |> koru/vaxis:quit()
 ! key k when k.ch == 'a' |> std/string:from-page(text: "new task")
     | ok a |> std/string:take(s: a): m |> std/store:insert(todos) { label: m, done: 0 }
