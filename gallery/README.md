@@ -15,7 +15,8 @@ cd gallery && koruc run gallery.k
 | `n` / `p` | next / prev exhibit |
 | `j` / `k` | peek on **catalog** / **list** / **table**; line on **viewport** |
 | `space` | poke progress (+10, wraps) |
-| type / backspace | edit on **text-input** |
+| type / backspace | edit on **text-input** / **textarea** |
+| enter | newline on **textarea** |
 | `d` / `u` / `g` / `G` | viewport half-page / ends; `g`/`G` also **table** |
 | `h` / `l` | **paginator** |
 | `?` | **help** short/full |
@@ -34,4 +35,5 @@ cd gallery && koruc run gallery.k
 | **paginator** | `<paginator/>` Dots + Arabic |
 | **help** | `<help/>` |
 | **table** | `<table/>` |
+| **textarea** | `<textarea/>` — multi-line ┃ gutter + blink |
 | **style** | Style swatches |
