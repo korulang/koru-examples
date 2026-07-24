@@ -1,0 +1,9 @@
+{
+  "name": "shader_toy",
+  "version": "0.1.0",
+  "entry": "shader_toy.k",
+  "paths": {
+    "koru": "../../koru-libs",
+    "libs": "../../koru-libs"
+  }
+}
