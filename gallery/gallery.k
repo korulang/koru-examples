@@ -9,7 +9,7 @@
 //
 // n/p next/prev · space poke progress · type on text-input ·
 // j/k catalog|list|table|filepicker · type textarea · j/k/d/u/g/G viewport ·
-// h/l paginator · ? help · space/s/r clocks · l/h filepicker · q quit
+// h/l paginator|pager · ? help · space/s/r clocks · l/h filepicker · q quit
 
 import std/io
 import std/string
@@ -18,7 +18,7 @@ import koru/vaxis
 
 // page: 0 catalog · 1 progress · 2 spinner · 3 text-input · 4 list ·
 //       5 viewport · 6 paginator · 7 help · 8 table · 9 textarea ·
-//       10 clocks · 11 filepicker · 12 style
+//       10 clocks · 11 filepicker · 12 pager · 13 style
 // Clocks live on `ui` (not a second store): a bare `! tick` installs alone and
 // drops later `when` ticks — so remaining/elapsed/running share the one tick
 // rail with spinner/text-input `ms`.
@@ -31,10 +31,11 @@ std/store:new(ui) {
     running: 1[i64]
 }
 std/store:new(buf, capacity: 2) { text: *std/string:String<instance!> }
-std/store:new(catalog) { selected: 0[i64], count: 12[i64] }
+std/store:new(catalog) { selected: 0[i64], count: 13[i64] }
 std/store:new(list) { selected: 0[i64], count: 28[i64] }
 std/store:new(scroll) { y: 0[i64], count: 41[i64] }
 std/store:new(pager) { page: 0[i64], total: 7[i64] }
+std/store:new(book) { page: 0[i64], total: 3[i64], offset: 0[i64] }
 std/store:new(help) { show: 0[i64] }
 std/store:new(table) { selected: 0[i64], count: 20[i64] }
 std/store:new(fp) { selected: 0[i64], dir: 0[i64] }
@@ -161,6 +162,17 @@ koru/vaxis:component(filepicker-exhibit) {
     </dock>
 }
 
+// COMPOSITION — catalog viewport + dual paginator; page+offset lockstep.
+koru/vaxis:component(pager-exhibit) {
+    <dock>
+        <topbar dock="top" h="1" title="gallery · pager (composition)"/>
+        <viewport dock="fill" content={{ content:s }} offset={{ offset:d }}/>
+        <statusbar dock="bottom" h="1" hint="h/l page · n/p exhibits · q"/>
+        <paginator dock="bottom" h="1" kind="arabic" page={{ page:d }} total={{ total:d }}/>
+        <paginator dock="bottom" h="1" kind="dots" page={{ page:d }} total={{ total:d }}/>
+    </dock>
+}
+
 koru/vaxis:component(style-exhibit) {
     <dock>
         <topbar dock="top" h="1" title="gallery · style"/>
@@ -179,7 +191,7 @@ koru/vaxis:run(title: "gallery")
 ! draw w |> if(ui.page == 0)
     | then |> catalog-exhibit(win: w,
         title: "Charm / vaxis catalog",
-        items: "progress — ▌/░ meter, purple→pink\nspinner — MiniDot braille + tick\ntext-input — prompt, placeholder, blink\nlist — selection + ●/○ paginator\nviewport — scrollable content slice\npaginator — Dots + Arabic status chrome\nhelp — short • line / full column\ntable — header, pink row, … truncate\ntextarea — multi-line ┃ gutter + blink\ntimer / stopwatch — countdown + count-up\nfilepicker — path header, > pink, purple dirs\nstyle — Style fg/bg + UTF-8 runes",
+        items: "progress — ▌/░ meter, purple→pink\nspinner — MiniDot braille + tick\ntext-input — prompt, placeholder, blink\nlist — selection + ●/○ paginator\nviewport — scrollable content slice\npaginator — Dots + Arabic status chrome\nhelp — short • line / full column\ntable — header, pink row, … truncate\ntextarea — multi-line ┃ gutter + blink\ntimer / stopwatch — countdown + count-up\nfilepicker — path header, > pink, purple dirs\npager — composition: viewport + paginator\nstyle — Style fg/bg + UTF-8 runes",
         catalog.selected)
     | else |> if(ui.page == 1)
         | then |> progress-exhibit(win: w, ui.value, max: 100)
@@ -230,9 +242,13 @@ koru/vaxis:run(title: "gallery")
                                                         path: "~/charm/documents",
                                                         entries: "D\t..\nF\tresume.pdf\nF\tbudget.xlsx\nF\tnotes.md\nF\tcover-letter.md",
                                                         fp.selected)
-                                                | else |> style-exhibit(win: w)
-                                                    |> koru/vaxis:write-styled(x: 2, y: 3, text: "▌▌▌▌▌▌░░░░░░  half-block  #5A56E0", style: { fg: 0x5A56E0 })
-                                                    |> koru/vaxis:write-styled(x: 2, y: 5, text: "████████░░░░  block  pink on slate", style: { fg: 0xEE6FF8, bg: 0x606060 })
+                                                | else |> if(ui.page == 12)
+                                                    | then |> pager-exhibit(win: w,
+                                                        content: "PAGE ONE\n========\n\nA pager is two halves wired together.\nThe viewport shows one screen of a long\ndocument; the rows beneath are paginator\nchrome — Charm's status-only marker, in\nboth Dots and Arabic modes at once.\nOne store owns the page number. Press l:\nthis header, the visible lines, and both\nfooters jump in lockstep — shared state\ndriving two catalog leaves at once.\nPAGE TWO\n========\n\nThe viewport is honest about height. It\npaints only the rows its window holds and\nhard-clips long lines at the right edge\ninstead of re-flowing them, so columns\nstay still while you read. The host sees\nthe page index, not the window height, so\neach flip moves the offset by exactly\ntwelve lines — one fixed slice per page,\nclamped at both ends by the key guards.\nPAGE THREE\n==========\n\nTwo paginator modes, one source of truth.\nDots light the current page pink; Arabic\nprints N/M from the same store field, so\nthey can never disagree. That is the\ncomposition claim: leaves keep their own\npaint and chrome; the host keeps only\nthe numbers. This is the last page —\npress h to climb back through the deck\nand watch all three rows move together.",
+                                                        book.offset, book.page, book.total)
+                                                    | else |> style-exhibit(win: w)
+                                                        |> koru/vaxis:write-styled(x: 2, y: 3, text: "▌▌▌▌▌▌░░░░░░  half-block  #5A56E0", style: { fg: 0x5A56E0 })
+                                                        |> koru/vaxis:write-styled(x: 2, y: 5, text: "████████░░░░  block  pink on slate", style: { fg: 0xEE6FF8, bg: 0x606060 })
 ! tick ms when ui.ms == 0 |> std/store:stored { ui.ms: ms }
 ! tick ms when ui.ms > 0 and ui.running == 1 and ui.remaining > 0 |> std/store:stored {
     ui.remaining: ui.remaining - (ms - ui.ms),
@@ -247,8 +263,10 @@ koru/vaxis:run(title: "gallery")
 ! key k when k.ch == 'q' and ui.page != 3 and ui.page != 9 |> koru/vaxis:quit()
 ! key k when k.ch == 27 and ui.page == 3 |> koru/vaxis:quit()
 ! key k when k.ch == 27 and ui.page == 9 |> koru/vaxis:quit()
-! key k when k.ch == 'n' and ui.page < 12 |> std/store:stored { ui.page: ui.page + 1 }
+! key k when k.ch == 'n' and ui.page < 13 |> std/store:stored { ui.page: ui.page + 1 }
 ! key k when k.ch == 'p' and ui.page > 0 |> std/store:stored { ui.page: ui.page - 1 }
+! key k when ui.page == 12 and k.ch == 'l' and book.page < book.total - 1 |> std/store:stored { book.page: book.page + 1, book.offset: book.offset + 12 }
+! key k when ui.page == 12 and k.ch == 'h' and book.page > 0 |> std/store:stored { book.page: book.page - 1, book.offset: book.offset - 12 }
 ! key k when ui.page == 10 and k.ch == ' ' and ui.running == 1 |> std/store:stored { ui.running: 0 }
 ! key k when ui.page == 10 and k.ch == ' ' and ui.running == 0 |> std/store:stored { ui.running: 1 }
 ! key k when ui.page == 10 and k.ch == 's' and ui.running == 1 |> std/store:stored { ui.running: 0 }

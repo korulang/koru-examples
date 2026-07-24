@@ -39,4 +39,5 @@ cd gallery && koruc run gallery.k
 | **textarea** | `<textarea/>` — multi-line ┃ gutter + blink |
 | **clocks** | `<timer/>` + `<stopwatch/>` — countdown + count-up |
 | **filepicker** | `<filepicker/>` — path header, `>` pink, purple dirs |
+| **pager** | composition — `<viewport/>` + `<paginator/>` lockstep |
 | **style** | Style swatches |
