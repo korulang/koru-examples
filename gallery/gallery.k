@@ -3,6 +3,9 @@
 // Eyes for COMPONENT / COMPOSITION polish. Store facts → page-route
 // categorizes into named continuations (`=> catalog`, …) → exhibits hang
 // off those branches. Pump pulses take meaning from the route.
+// Collectors: `koru/vaxis:run` owns the loop + `| err`; `koru/vaxis(gallery)`
+// fuses `! draw` / `! tick` / `! key`. Tree-local keys: `| clocks |> clocks-keys`
+// (page once, then cond on ch) — not flat `| clocks when …` × N.
 //
 //   koruc run gallery.k
 //
@@ -312,13 +315,8 @@ on-key = page-route(page)
 | table when ch == 'k' and table.selected > 0 |> std/store:stored { table.selected: table.selected - 1 }
 | table when ch == 'g' and table.selected > 0 |> std/store:stored { table.selected: 0 }
 | table when ch == 'G' and table.selected < table.count - 1 |> std/store:stored { table.selected: table.count - 1 }
-| clocks when ch == ' ' and ui.running == 1 |> std/store:stored { ui.running: 0 }
-| clocks when ch == ' ' and ui.running == 0 |> std/store:stored { ui.running: 1 }
-| clocks when ch == 's' and ui.running == 1 |> std/store:stored { ui.running: 0 }
-| clocks when ch == 's' and ui.running == 0 |> std/store:stored { ui.running: 1 }
-| clocks when ch == 'r' |> std/store:stored { ui.remaining: 15000, ui.elapsed: 0 }
-| pager when ch == 'l' and book.page < book.total - 1 |> std/store:stored { book.page: book.page + 1, book.offset: book.offset + 12 }
-| pager when ch == 'h' and book.page > 0 |> std/store:stored { book.page: book.page - 1, book.offset: book.offset - 12 }
+| clocks |> clocks-keys(ch)
+| pager |> pager-keys(ch)
 | filepicker when ch == 'j' and fp.dir == 0 and fp.selected < 5 |> std/store:stored { fp.selected: fp.selected + 1 }
 | filepicker when ch == 'j' and fp.dir == 1 and fp.selected < 4 |> std/store:stored { fp.selected: fp.selected + 1 }
 | filepicker when ch == 'k' and fp.selected > 0 |> std/store:stored { fp.selected: fp.selected - 1 }
@@ -384,13 +382,32 @@ on-key = page-route(page)
 | paginator |> _
 | help |> _
 | table |> _
-| clocks |> _
-| pager |> _
 | filepicker |> _
 | text-input |> _
 | textarea |> _
 
+// Tree-local vocab: page-route enters the page once; local cond branches on key/state.
+event clocks-keys { ch: u8 }
+clocks-keys = cond(ch)
+| c x when x == ' ' and ui.running == 1 |> std/store:stored { ui.running: 0 }
+| c x when x == ' ' and ui.running == 0 |> std/store:stored { ui.running: 1 }
+| c x when x == 's' and ui.running == 1 |> std/store:stored { ui.running: 0 }
+| c x when x == 's' and ui.running == 0 |> std/store:stored { ui.running: 1 }
+| c x when x == 'r' |> std/store:stored { ui.remaining: 15000, ui.elapsed: 0 }
+| c _ |> _
+
+event pager-keys { ch: u8 }
+pager-keys = cond(ch)
+| c x when x == 'l' and book.page < book.total - 1 |> std/store:stored { book.page: book.page + 1, book.offset: book.offset + 12 }
+| c x when x == 'h' and book.page > 0 |> std/store:stored { book.page: book.page - 1, book.offset: book.offset - 12 }
+| c _ |> _
+
+// Pump owns the TTY loop + `| err`. Collectors fuse `!` arms into the same `__H`
+// (koru/vaxis(name) — join key = run title). No second loop, no scope change.
 koru/vaxis:run(title: "gallery")
+| err e |> std/io:print.ln("gallery failed: {{ e:s }}")
+
+koru/vaxis(gallery)
 ! draw w |> exhibit(win: w, ui.page)
 ! tick ms when ui.ms == 0 |> std/store:stored { ui.ms: ms }
 ! tick ms when ui.ms > 0 and ui.running == 1 and ui.remaining > 0 |> std/store:stored {
@@ -408,4 +425,3 @@ koru/vaxis:run(title: "gallery")
 ! key k when k.ch == 'q' |> on-q(ui.page)
 ! key k when k.ch == 27 |> on-esc(ui.page)
 ! key k |> on-key(ui.page, k.ch)
-| err e |> std/io:print.ln("gallery failed: {{ e:s }}")
