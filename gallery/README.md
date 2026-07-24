@@ -19,7 +19,7 @@ cd gallery && koruc run gallery.k
 | type / backspace | edit on **text-input** / **textarea** |
 | enter | newline on **textarea** |
 | `d` / `u` / `g` / `G` | viewport half-page / ends; `g`/`G` also **table** |
-| `h` / `l` | **paginator** |
+| `h` / `l` | **paginator**; back / open on **filepicker** |
 | `?` | **help** short/full |
 | `q` (or `esc` on text-input) | quit |
 
@@ -38,4 +38,5 @@ cd gallery && koruc run gallery.k
 | **table** | `<table/>` |
 | **textarea** | `<textarea/>` — multi-line ┃ gutter + blink |
 | **clocks** | `<timer/>` + `<stopwatch/>` — countdown + count-up |
+| **filepicker** | `<filepicker/>` — path header, `>` pink, purple dirs |
 | **style** | Style swatches |

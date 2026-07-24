@@ -8,8 +8,8 @@
 //   koruc run gallery.k
 //
 // n/p next/prev · space poke progress · type on text-input ·
-// j/k catalog|list|table · type textarea · j/k/d/u/g/G viewport · h/l paginator ·
-// ? help · space/s/r clocks · q quit
+// j/k catalog|list|table|filepicker · type textarea · j/k/d/u/g/G viewport ·
+// h/l paginator · ? help · space/s/r clocks · l/h filepicker · q quit
 
 import std/io
 import std/string
@@ -18,7 +18,7 @@ import koru/vaxis
 
 // page: 0 catalog · 1 progress · 2 spinner · 3 text-input · 4 list ·
 //       5 viewport · 6 paginator · 7 help · 8 table · 9 textarea ·
-//       10 clocks · 11 style
+//       10 clocks · 11 filepicker · 12 style
 // Clocks live on `ui` (not a second store): a bare `! tick` installs alone and
 // drops later `when` ticks — so remaining/elapsed/running share the one tick
 // rail with spinner/text-input `ms`.
@@ -31,12 +31,13 @@ std/store:new(ui) {
     running: 1[i64]
 }
 std/store:new(buf, capacity: 2) { text: *std/string:String<instance!> }
-std/store:new(catalog) { selected: 0[i64], count: 11[i64] }
+std/store:new(catalog) { selected: 0[i64], count: 12[i64] }
 std/store:new(list) { selected: 0[i64], count: 28[i64] }
 std/store:new(scroll) { y: 0[i64], count: 41[i64] }
 std/store:new(pager) { page: 0[i64], total: 7[i64] }
 std/store:new(help) { show: 0[i64] }
 std/store:new(table) { selected: 0[i64], count: 20[i64] }
+std/store:new(fp) { selected: 0[i64], dir: 0[i64] }
 
 koru/vaxis:component(topbar) {
     <text>{{ title:s }}</text>
@@ -152,6 +153,14 @@ koru/vaxis:component(clocks-exhibit) {
     </dock>
 }
 
+koru/vaxis:component(filepicker-exhibit) {
+    <dock>
+        <topbar dock="top" h="1" title="gallery · filepicker"/>
+        <statusbar dock="bottom" h="1" hint="j/k move · g/G ends · l/enter open · h back · n/p · q"/>
+        <filepicker dock="fill" path={{ path:s }} entries={{ entries:s }} selected={{ selected:d }}/>
+    </dock>
+}
+
 koru/vaxis:component(style-exhibit) {
     <dock>
         <topbar dock="top" h="1" title="gallery · style"/>
@@ -170,7 +179,7 @@ koru/vaxis:run(title: "gallery")
 ! draw w |> if(ui.page == 0)
     | then |> catalog-exhibit(win: w,
         title: "Charm / vaxis catalog",
-        items: "progress — ▌/░ meter, purple→pink\nspinner — MiniDot braille + tick\ntext-input — prompt, placeholder, blink\nlist — selection + ●/○ paginator\nviewport — scrollable content slice\npaginator — Dots + Arabic status chrome\nhelp — short • line / full column\ntable — header, pink row, … truncate\ntextarea — multi-line ┃ gutter + blink\ntimer / stopwatch — countdown + count-up\nstyle — Style fg/bg + UTF-8 runes",
+        items: "progress — ▌/░ meter, purple→pink\nspinner — MiniDot braille + tick\ntext-input — prompt, placeholder, blink\nlist — selection + ●/○ paginator\nviewport — scrollable content slice\npaginator — Dots + Arabic status chrome\nhelp — short • line / full column\ntable — header, pink row, … truncate\ntextarea — multi-line ┃ gutter + blink\ntimer / stopwatch — countdown + count-up\nfilepicker — path header, > pink, purple dirs\nstyle — Style fg/bg + UTF-8 runes",
         catalog.selected)
     | else |> if(ui.page == 1)
         | then |> progress-exhibit(win: w, ui.value, max: 100)
@@ -211,9 +220,19 @@ koru/vaxis:run(title: "gallery")
                                             | then |> clocks-exhibit(win: w,
                                                 ui.remaining, t_running: ui.running,
                                                 ui.elapsed, s_running: ui.running)
-                                            | else |> style-exhibit(win: w)
-                                                |> koru/vaxis:write-styled(x: 2, y: 3, text: "▌▌▌▌▌▌░░░░░░  half-block  #5A56E0", style: { fg: 0x5A56E0 })
-                                                |> koru/vaxis:write-styled(x: 2, y: 5, text: "████████░░░░  block  pink on slate", style: { fg: 0xEE6FF8, bg: 0x606060 })
+                                            | else |> if(ui.page == 11)
+                                                | then |> if(fp.dir == 0)
+                                                    | then |> filepicker-exhibit(win: w,
+                                                        path: "~/charm",
+                                                        entries: "D\tdocuments\nF\tREADME.md\nF\tgo.mod\nF\tgo.sum\nF\tLICENSE\nF\t.gitignore",
+                                                        fp.selected)
+                                                    | else |> filepicker-exhibit(win: w,
+                                                        path: "~/charm/documents",
+                                                        entries: "D\t..\nF\tresume.pdf\nF\tbudget.xlsx\nF\tnotes.md\nF\tcover-letter.md",
+                                                        fp.selected)
+                                                | else |> style-exhibit(win: w)
+                                                    |> koru/vaxis:write-styled(x: 2, y: 3, text: "▌▌▌▌▌▌░░░░░░  half-block  #5A56E0", style: { fg: 0x5A56E0 })
+                                                    |> koru/vaxis:write-styled(x: 2, y: 5, text: "████████░░░░  block  pink on slate", style: { fg: 0xEE6FF8, bg: 0x606060 })
 ! tick ms when ui.ms == 0 |> std/store:stored { ui.ms: ms }
 ! tick ms when ui.ms > 0 and ui.running == 1 and ui.remaining > 0 |> std/store:stored {
     ui.remaining: ui.remaining - (ms - ui.ms),
@@ -228,13 +247,24 @@ koru/vaxis:run(title: "gallery")
 ! key k when k.ch == 'q' and ui.page != 3 and ui.page != 9 |> koru/vaxis:quit()
 ! key k when k.ch == 27 and ui.page == 3 |> koru/vaxis:quit()
 ! key k when k.ch == 27 and ui.page == 9 |> koru/vaxis:quit()
-! key k when k.ch == 'n' and ui.page < 11 |> std/store:stored { ui.page: ui.page + 1 }
+! key k when k.ch == 'n' and ui.page < 12 |> std/store:stored { ui.page: ui.page + 1 }
 ! key k when k.ch == 'p' and ui.page > 0 |> std/store:stored { ui.page: ui.page - 1 }
 ! key k when ui.page == 10 and k.ch == ' ' and ui.running == 1 |> std/store:stored { ui.running: 0 }
 ! key k when ui.page == 10 and k.ch == ' ' and ui.running == 0 |> std/store:stored { ui.running: 1 }
 ! key k when ui.page == 10 and k.ch == 's' and ui.running == 1 |> std/store:stored { ui.running: 0 }
 ! key k when ui.page == 10 and k.ch == 's' and ui.running == 0 |> std/store:stored { ui.running: 1 }
 ! key k when ui.page == 10 and k.ch == 'r' |> std/store:stored { ui.remaining: 15000, ui.elapsed: 0 }
+! key k when ui.page == 11 and k.ch == 'j' and fp.dir == 0 and fp.selected < 5 |> std/store:stored { fp.selected: fp.selected + 1 }
+! key k when ui.page == 11 and k.ch == 'j' and fp.dir == 1 and fp.selected < 4 |> std/store:stored { fp.selected: fp.selected + 1 }
+! key k when ui.page == 11 and k.ch == 'k' and fp.selected > 0 |> std/store:stored { fp.selected: fp.selected - 1 }
+! key k when ui.page == 11 and k.ch == 'g' and fp.selected > 0 |> std/store:stored { fp.selected: 0 }
+! key k when ui.page == 11 and k.ch == 'G' and fp.dir == 0 and fp.selected < 5 |> std/store:stored { fp.selected: 5 }
+! key k when ui.page == 11 and k.ch == 'G' and fp.dir == 1 and fp.selected < 4 |> std/store:stored { fp.selected: 4 }
+! key k when ui.page == 11 and k.ch == 'l' and fp.dir == 0 and fp.selected == 0 |> std/store:stored { fp.dir: 1, fp.selected: 0 }
+! key k when ui.page == 11 and k.ch == 13 and fp.dir == 0 and fp.selected == 0 |> std/store:stored { fp.dir: 1, fp.selected: 0 }
+! key k when ui.page == 11 and k.ch == 'l' and fp.dir == 1 and fp.selected == 0 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
+! key k when ui.page == 11 and k.ch == 13 and fp.dir == 1 and fp.selected == 0 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
+! key k when ui.page == 11 and k.ch == 'h' and fp.dir == 1 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
 ! key k when ui.page == 0 and k.ch == 'j' and catalog.selected < catalog.count - 1 |> std/store:stored { catalog.selected: catalog.selected + 1 }
 ! key k when ui.page == 0 and k.ch == 'k' and catalog.selected > 0 |> std/store:stored { catalog.selected: catalog.selected - 1 }
 ! key k when k.ch == ' ' and ui.page == 1 and ui.value < 100 |> std/store:stored { ui.value: ui.value + 10 }
