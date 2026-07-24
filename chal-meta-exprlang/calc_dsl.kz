@@ -10,7 +10,7 @@
 
 const std = @import("std");
 
-~[comptime|transform]pub event calc-fold {
+~[comptime|transform]pub tor calc-fold {
     source: Source,
     invocation: *const Invocation,
     program: *const Program,

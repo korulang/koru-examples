@@ -67,7 +67,7 @@ fn curlError(code: c.CURLcode, allocator: std.mem.Allocator) Error {
 // GET — returns a Response carrying the `open!` obligation
 // ============================================================================
 
-~pub event get { url: string }
+~pub tor get { url: string }
 | ok *Response<open!>
 | err Error
 
@@ -127,7 +127,7 @@ fn curlError(code: c.CURLcode, allocator: std.mem.Allocator) Error {
 // close — discharges the `open!` obligation
 // ============================================================================
 
-~pub event close { resp: *Response<!open> }
+~pub tor close { resp: *Response<!open> }
 
 ~proc close|zig {
     if (resp.handle) |h| {

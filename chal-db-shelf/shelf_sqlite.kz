@@ -44,7 +44,7 @@ pub const Statement = struct {
 // Connection Management
 // ============================================================================
 
-~pub event open { path: string }
+~pub tor open { path: string }
 | db *Connection<opened!>
 | err { code: i32, msg: string }
 
@@ -61,7 +61,7 @@ pub const Statement = struct {
     return .{ .db = conn };
 }
 
-~pub event close { conn: *Connection<!opened> }
+~pub tor close { conn: *Connection<!opened> }
 ~proc close|zig {
     if (conn.handle) |h| {
         _ = c.sqlite3_close(h);
@@ -73,7 +73,7 @@ pub const Statement = struct {
 // Query Execution
 // ============================================================================
 
-~pub event exec { conn: *Connection<opened>, sql: string }
+~pub tor exec { conn: *Connection<opened>, sql: string }
 | ok
 | err { code: i32, msg: string }
 
@@ -89,7 +89,7 @@ pub const Statement = struct {
 }
 
 // Literal SQL query - runtime SQL string, per-row `! row` effect branch.
-~pub event query.literal { conn: *Connection<!opened>, sql: string }
+~pub tor query.literal { conn: *Connection<!opened>, sql: string }
 ! row *Statement<row!>
 | done *Connection<opened!>
 | err { conn: *Connection<opened!>, code: i32, msg: string }
@@ -117,26 +117,26 @@ pub const Statement = struct {
 
 // No-op consumer of the per-row borrow (compiler auto-inserts at each row-body
 // boundary; the user never calls it).
-~pub event release.row { stmt: *Statement<!row> }
+~pub tor release.row { stmt: *Statement<!row> }
 ~proc release.row|zig { _ = &stmt; }
 
 // ============================================================================
 // Column Access (within row context)
 // ============================================================================
 
-~pub event col.int { stmt: *Statement<row>, index: i32 } -> i64
+~pub tor col.int { stmt: *Statement<row>, index: i32 } -> i64
 ~proc col.int|zig {
     return c.sqlite3_column_int64(stmt.handle, index);
 }
 
-~pub event col.text { stmt: *Statement<row>, index: i32 } -> string
+~pub tor col.text { stmt: *Statement<row>, index: i32 } -> string
 ~proc col.text|zig {
     const ptr = c.sqlite3_column_text(stmt.handle, index);
     const len = c.sqlite3_column_bytes(stmt.handle, index);
     return if (ptr) |p| p[0..@intCast(len)] else "";
 }
 
-~pub event col.real { stmt: *Statement<row>, index: i32 } -> f64
+~pub tor col.real { stmt: *Statement<row>, index: i32 } -> f64
 ~proc col.real|zig {
     return c.sqlite3_column_double(stmt.handle, index);
 }

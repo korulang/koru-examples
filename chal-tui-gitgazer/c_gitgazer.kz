@@ -31,7 +31,7 @@
 
 const std = @import("std");
 
-~event git-lines {}
+~tor git-lines {}
 ! line { text: string, idx: i64 }
 | done usize
 | failed string

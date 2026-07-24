@@ -22,7 +22,7 @@ const std = @import("std");
 // The comptime transform event. Receives the Source block text, the invocation
 // context, the whole program AST, and an allocator. Returns a transformed
 // whole-program.
-~[comptime|transform]event calc-fold {
+~[comptime|transform]tor calc-fold {
     source: Source,
     invocation: *const Invocation,
     program: *const Program,

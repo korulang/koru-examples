@@ -15,7 +15,7 @@
 
 const std = @import("std");
 
-~event git-lines {}
+~tor git-lines {}
 ! line string
 | done usize
 | failed string

@@ -12,7 +12,7 @@
 ~import std/io
 ~import app/calc_secure
 
-~pub event check { v: i64<!checked> } -> i64
+~pub tor check { v: i64<!checked> } -> i64
 ~proc check|zig {
     return v;
 }

@@ -10,7 +10,7 @@
 
 const std = @import("std");
 
-~[comptime|transform]pub event calc-secure {
+~[comptime|transform]pub tor calc-secure {
     source: Source,
     invocation: *const Invocation,
     program: *const Program,

@@ -13,7 +13,7 @@
 ~import std/io
 ~import app/calc_dsl
 
-~event seed {} -> i64
+~tor seed {} -> i64
 ~proc seed|zig {
     return 100;
 }

@@ -47,7 +47,7 @@ std/store:new(fp) { selected: 0[i64], dir: 0[i64] }
 // Arms are optional: sparse consumers name only what they mean; unhandled
 // → no-op (`|?` expands inside event bodies — 355_011). exhibit still paints
 // every page by listing every arm — exhaustiveness there is intent, not type.
-event page-route { page: i64 }
+tor page-route { page: i64 }
 | ?catalog
 | ?progress
 | ?spinner
@@ -224,7 +224,7 @@ std/string:from-page(text: "")
 | err _ |> _
 
 // Flat branch arms live here — not under run's `|` terminal slot.
-event exhibit { win: koru/vaxis:Window, page: i64 }
+tor exhibit { win: koru/vaxis:Window, page: i64 }
 exhibit = page-route(page)
 | catalog |> catalog-exhibit(win,
     title: "Charm / vaxis catalog",
@@ -277,13 +277,13 @@ exhibit = page-route(page)
 
 // Rim chords that care about page identity via the same route vocabulary.
 // Optional arms: name the exceptions; `|?` covers the rest (355_011).
-event on-q { page: i64 }
+tor on-q { page: i64 }
 on-q = page-route(page)
 | text-input |> _
 | textarea |> _
 |? |> koru/vaxis:quit()
 
-event on-esc { page: i64 }
+tor on-esc { page: i64 }
 on-esc = page-route(page)
 | text-input |> koru/vaxis:quit()
 | textarea |> koru/vaxis:quit()
@@ -291,7 +291,7 @@ on-esc = page-route(page)
 // Exhibit-local keys: meaning is the branch (`| filepicker when ch == 'j'`).
 // Pages with no keys omitted (optional). Multi-when elses are KORU050 — `|?`
 // does not count as else (355_007); spinner/style never appear here.
-event on-key { page: i64, ch: u8 }
+tor on-key { page: i64, ch: u8 }
 on-key = page-route(page)
 | catalog when ch == 'j' and catalog.selected < catalog.count - 1 |> std/store:stored { catalog.selected: catalog.selected + 1 }
 | catalog when ch == 'k' and catalog.selected > 0 |> std/store:stored { catalog.selected: catalog.selected - 1 }
@@ -387,7 +387,7 @@ on-key = page-route(page)
 | textarea |> _
 
 // Tree-local vocab: page-route enters the page once; local cond branches on key/state.
-event clocks-keys { ch: u8 }
+tor clocks-keys { ch: u8 }
 clocks-keys = cond(ch)
 | c x when x == ' ' and ui.running == 1 |> std/store:stored { ui.running: 0 }
 | c x when x == ' ' and ui.running == 0 |> std/store:stored { ui.running: 1 }
@@ -396,7 +396,7 @@ clocks-keys = cond(ch)
 | c x when x == 'r' |> std/store:stored { ui.remaining: 15000, ui.elapsed: 0 }
 | c _ |> _
 
-event pager-keys { ch: u8 }
+tor pager-keys { ch: u8 }
 pager-keys = cond(ch)
 | c x when x == 'l' and book.page < book.total - 1 |> std/store:stored { book.page: book.page + 1, book.offset: book.offset + 12 }
 | c x when x == 'h' and book.page > 0 |> std/store:stored { book.page: book.page - 1, book.offset: book.offset - 12 }
