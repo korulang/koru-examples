@@ -19,8 +19,11 @@ import std/store
 import koru/vaxis
 import app/content
 
-// Clocks share `ui` with spinner/text-input ms: a bare `! tick` installs alone
-// and drops later when-ticks — all tick arms stay when-guarded on one store.
+// Clocks share `ui` with spinner/text-input ms, so every tick arm is
+// when-guarded on one store. That is the honest shape for a set of independent
+// subscribers, and it is no longer folklore: an unguarded arm ahead of guarded
+// siblings is the else of an exclusive group, and KORU053 rejects it outright
+// (400_174) instead of silently deleting everything after it.
 std/store:new(ui) {
     page: 0[i64],
     value: 40[i64],
