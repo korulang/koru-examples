@@ -1,0 +1,6 @@
+// money — signed minor-unit arithmetic. A DIRECTORY module: `money/index.kz`
+// resolves under plain `import app/money` via index auto-import, so promoting a
+// flat sibling into a directory needed no change at any call site.
+
+~pub tor net { debit: i64, credit: i64 } -> i64
+~net -> credit - debit

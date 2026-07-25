@@ -1,0 +1,12 @@
+// report — a module that imports ANOTHER app module.
+// Transitive hop: ledger.k -> app/report -> app/money.
+
+~import app/money
+
+// PRIVATE (no ~pub): an implementation detail of report.
+~tor ceiling { n: i64 } -> i64
+~ceiling -> n + 1000
+
+// PUBLIC surface. Chained bind -> produce across a module boundary (020_030).
+~pub tor balance { opening: i64, debit: i64, credit: i64 } -> i64
+~balance = app/money:net(debit, credit): n -> n + opening
