@@ -288,103 +288,26 @@ on-esc = page-route(page)
 | text-input |> koru/vaxis:quit()
 | textarea |> koru/vaxis:quit()
 
-// Exhibit-local keys: meaning is the branch (`| filepicker when ch == 'j'`).
-// Pages with no keys omitted (optional). Multi-when elses are KORU050 — `|?`
-// does not count as else (355_007); spinner/style never appear here.
+// Exhibit-local keys: the route enters the page ONCE, then a per-page tor owns
+// that page's vocabulary. Delegated arms are unguarded, so each branch group is
+// size 1 — which is why the ten no-op `| page |> _` arms this table used to end
+// with are gone: KORU050's "add an else" tax only applies to groups carrying
+// `when` arms. Pages with no keys (spinner, style) are simply omitted — the
+// route's arms are optional.
 tor on-key { page: i64, ch: u8 }
 on-key = page-route(page)
-| catalog when ch == 'j' and catalog.selected < catalog.count - 1 |> std/store:stored { catalog.selected: catalog.selected + 1 }
-| catalog when ch == 'k' and catalog.selected > 0 |> std/store:stored { catalog.selected: catalog.selected - 1 }
-| progress when ch == ' ' and ui.value < 100 |> std/store:stored { ui.value: ui.value + 10 }
-| progress when ch == ' ' and ui.value >= 100 |> std/store:stored { ui.value: 0 }
-| list when ch == 'j' and list.selected < list.count - 1 |> std/store:stored { list.selected: list.selected + 1 }
-| list when ch == 'k' and list.selected > 0 |> std/store:stored { list.selected: list.selected - 1 }
-| viewport when ch == 'j' and scroll.y < scroll.count - 1 |> std/store:stored { scroll.y: scroll.y + 1 }
-| viewport when ch == 'k' and scroll.y > 0 |> std/store:stored { scroll.y: scroll.y - 1 }
-| viewport when ch == 'd' and scroll.y < scroll.count - 12 |> std/store:stored { scroll.y: scroll.y + 12 }
-| viewport when ch == 'd' and scroll.y >= scroll.count - 12 and scroll.y < scroll.count - 1 |> std/store:stored { scroll.y: scroll.count - 1 }
-| viewport when ch == 'u' and scroll.y >= 12 |> std/store:stored { scroll.y: scroll.y - 12 }
-| viewport when ch == 'u' and scroll.y > 0 and scroll.y < 12 |> std/store:stored { scroll.y: 0 }
-| viewport when ch == 'g' and scroll.y > 0 |> std/store:stored { scroll.y: 0 }
-| viewport when ch == 'G' and scroll.y < scroll.count - 1 |> std/store:stored { scroll.y: scroll.count - 1 }
-| paginator when ch == 'l' and pager.page < pager.total - 1 |> std/store:stored { pager.page: pager.page + 1 }
-| paginator when ch == 'h' and pager.page > 0 |> std/store:stored { pager.page: pager.page - 1 }
-| help when ch == '?' and help.show == 0 |> std/store:stored { help.show: 1 }
-| help when ch == '?' and help.show == 1 |> std/store:stored { help.show: 0 }
-| table when ch == 'j' and table.selected < table.count - 1 |> std/store:stored { table.selected: table.selected + 1 }
-| table when ch == 'k' and table.selected > 0 |> std/store:stored { table.selected: table.selected - 1 }
-| table when ch == 'g' and table.selected > 0 |> std/store:stored { table.selected: 0 }
-| table when ch == 'G' and table.selected < table.count - 1 |> std/store:stored { table.selected: table.count - 1 }
-| clocks |> clocks-keys(ch)
-| pager |> pager-keys(ch)
-| filepicker when ch == 'j' and fp.dir == 0 and fp.selected < 5 |> std/store:stored { fp.selected: fp.selected + 1 }
-| filepicker when ch == 'j' and fp.dir == 1 and fp.selected < 4 |> std/store:stored { fp.selected: fp.selected + 1 }
-| filepicker when ch == 'k' and fp.selected > 0 |> std/store:stored { fp.selected: fp.selected - 1 }
-| filepicker when ch == 'g' and fp.selected > 0 |> std/store:stored { fp.selected: 0 }
-| filepicker when ch == 'G' and fp.dir == 0 and fp.selected < 5 |> std/store:stored { fp.selected: 5 }
-| filepicker when ch == 'G' and fp.dir == 1 and fp.selected < 4 |> std/store:stored { fp.selected: 4 }
-| filepicker when ch == 'l' and fp.dir == 0 and fp.selected == 0 |> std/store:stored { fp.dir: 1, fp.selected: 0 }
-| filepicker when ch == 13 and fp.dir == 0 and fp.selected == 0 |> std/store:stored { fp.dir: 1, fp.selected: 0 }
-| filepicker when ch == 'l' and fp.dir == 1 and fp.selected == 0 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
-| filepicker when ch == 13 and fp.dir == 1 and fp.selected == 0 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
-| filepicker when ch == 'h' and fp.dir == 1 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
-| text-input when ch == 127 |> std/store:take(buf[0])
-    | item d |> std/string:pop-char(s: d.text) |> std/store:insert(buf) { d.text }
-        | row _ |> _
-        | full f |> std/string:free(s: f.text)
-    | empty |> _
-| text-input when ch == 8 |> std/store:take(buf[0])
-    | item d |> std/string:pop-char(s: d.text) |> std/store:insert(buf) { d.text }
-        | row _ |> _
-        | full f |> std/string:free(s: f.text)
-    | empty |> _
-| text-input when ch >= 32 and ch < 127 |> std/store:take(buf[0])
-    | item d |> std/string:append-char(s: d.text, ch)
-        | ok |> std/store:insert(buf) { d.text }
-            | row _ |> _
-            | full f |> std/string:free(s: f.text)
-        | err _ |> std/store:insert(buf) { d.text }
-            | row _ |> _
-            | full f |> std/string:free(s: f.text)
-    | empty |> _
-| textarea when ch == 127 |> std/store:take(buf[0])
-    | item d |> std/string:pop-char(s: d.text) |> std/store:insert(buf) { d.text }
-        | row _ |> _
-        | full f |> std/string:free(s: f.text)
-    | empty |> _
-| textarea when ch == 8 |> std/store:take(buf[0])
-    | item d |> std/string:pop-char(s: d.text) |> std/store:insert(buf) { d.text }
-        | row _ |> _
-        | full f |> std/string:free(s: f.text)
-    | empty |> _
-| textarea when ch == 13 |> std/store:take(buf[0])
-    | item d |> std/string:append-char(s: d.text, ch)
-        | ok |> std/store:insert(buf) { d.text }
-            | row _ |> _
-            | full f |> std/string:free(s: f.text)
-        | err _ |> std/store:insert(buf) { d.text }
-            | row _ |> _
-            | full f |> std/string:free(s: f.text)
-    | empty |> _
-| textarea when ch >= 32 and ch < 127 |> std/store:take(buf[0])
-    | item d |> std/string:append-char(s: d.text, ch)
-        | ok |> std/store:insert(buf) { d.text }
-            | row _ |> _
-            | full f |> std/string:free(s: f.text)
-        | err _ |> std/store:insert(buf) { d.text }
-            | row _ |> _
-            | full f |> std/string:free(s: f.text)
-    | empty |> _
-| catalog |> _
-| progress |> _
-| list |> _
-| viewport |> _
-| paginator |> _
-| help |> _
-| table |> _
-| filepicker |> _
-| text-input |> _
-| textarea |> _
+| catalog    |> catalog-keys(ch)
+| progress   |> progress-keys(ch)
+| list       |> list-keys(ch)
+| viewport   |> viewport-keys(ch)
+| paginator  |> paginator-keys(ch)
+| help       |> help-keys(ch)
+| table      |> table-keys(ch)
+| clocks     |> clocks-keys(ch)
+| pager      |> pager-keys(ch)
+| filepicker |> filepicker-keys(ch)
+| text-input |> text-input-keys(ch)
+| textarea   |> textarea-keys(ch)
 
 // Tree-local vocab: page-route enters the page once; local cond branches on key/state.
 tor clocks-keys { ch: u8 }
@@ -401,6 +324,108 @@ pager-keys = cond(ch)
 | c x when x == 'l' and book.page < book.total - 1 |> std/store:stored { book.page: book.page + 1, book.offset: book.offset + 12 }
 | c x when x == 'h' and book.page > 0 |> std/store:stored { book.page: book.page - 1, book.offset: book.offset - 12 }
 | c _ |> _
+
+tor catalog-keys { ch: u8 }
+catalog-keys = cond(ch)
+| c x when x == 'j' and catalog.selected < catalog.count - 1 |> std/store:stored { catalog.selected: catalog.selected + 1 }
+| c x when x == 'k' and catalog.selected > 0 |> std/store:stored { catalog.selected: catalog.selected - 1 }
+| c _ |> _
+
+tor progress-keys { ch: u8 }
+progress-keys = cond(ch)
+| c x when x == ' ' and ui.value < 100 |> std/store:stored { ui.value: ui.value + 10 }
+| c x when x == ' ' and ui.value >= 100 |> std/store:stored { ui.value: 0 }
+| c _ |> _
+
+tor list-keys { ch: u8 }
+list-keys = cond(ch)
+| c x when x == 'j' and list.selected < list.count - 1 |> std/store:stored { list.selected: list.selected + 1 }
+| c x when x == 'k' and list.selected > 0 |> std/store:stored { list.selected: list.selected - 1 }
+| c _ |> _
+
+tor viewport-keys { ch: u8 }
+viewport-keys = cond(ch)
+| c x when x == 'j' and scroll.y < scroll.count - 1 |> std/store:stored { scroll.y: scroll.y + 1 }
+| c x when x == 'k' and scroll.y > 0 |> std/store:stored { scroll.y: scroll.y - 1 }
+| c x when x == 'd' and scroll.y < scroll.count - 12 |> std/store:stored { scroll.y: scroll.y + 12 }
+| c x when x == 'd' and scroll.y >= scroll.count - 12 and scroll.y < scroll.count - 1 |> std/store:stored { scroll.y: scroll.count - 1 }
+| c x when x == 'u' and scroll.y >= 12 |> std/store:stored { scroll.y: scroll.y - 12 }
+| c x when x == 'u' and scroll.y > 0 and scroll.y < 12 |> std/store:stored { scroll.y: 0 }
+| c x when x == 'g' and scroll.y > 0 |> std/store:stored { scroll.y: 0 }
+| c x when x == 'G' and scroll.y < scroll.count - 1 |> std/store:stored { scroll.y: scroll.count - 1 }
+| c _ |> _
+
+tor paginator-keys { ch: u8 }
+paginator-keys = cond(ch)
+| c x when x == 'l' and pager.page < pager.total - 1 |> std/store:stored { pager.page: pager.page + 1 }
+| c x when x == 'h' and pager.page > 0 |> std/store:stored { pager.page: pager.page - 1 }
+| c _ |> _
+
+tor help-keys { ch: u8 }
+help-keys = cond(ch)
+| c x when x == '?' and help.show == 0 |> std/store:stored { help.show: 1 }
+| c x when x == '?' and help.show == 1 |> std/store:stored { help.show: 0 }
+| c _ |> _
+
+tor table-keys { ch: u8 }
+table-keys = cond(ch)
+| c x when x == 'j' and table.selected < table.count - 1 |> std/store:stored { table.selected: table.selected + 1 }
+| c x when x == 'k' and table.selected > 0 |> std/store:stored { table.selected: table.selected - 1 }
+| c x when x == 'g' and table.selected > 0 |> std/store:stored { table.selected: 0 }
+| c x when x == 'G' and table.selected < table.count - 1 |> std/store:stored { table.selected: table.count - 1 }
+| c _ |> _
+
+tor filepicker-keys { ch: u8 }
+filepicker-keys = cond(ch)
+| c x when x == 'j' and fp.dir == 0 and fp.selected < 5 |> std/store:stored { fp.selected: fp.selected + 1 }
+| c x when x == 'j' and fp.dir == 1 and fp.selected < 4 |> std/store:stored { fp.selected: fp.selected + 1 }
+| c x when x == 'k' and fp.selected > 0 |> std/store:stored { fp.selected: fp.selected - 1 }
+| c x when x == 'g' and fp.selected > 0 |> std/store:stored { fp.selected: 0 }
+| c x when x == 'G' and fp.dir == 0 and fp.selected < 5 |> std/store:stored { fp.selected: 5 }
+| c x when x == 'G' and fp.dir == 1 and fp.selected < 4 |> std/store:stored { fp.selected: 4 }
+| c x when x == 'l' and fp.dir == 0 and fp.selected == 0 |> std/store:stored { fp.dir: 1, fp.selected: 0 }
+| c x when x == 13 and fp.dir == 0 and fp.selected == 0 |> std/store:stored { fp.dir: 1, fp.selected: 0 }
+| c x when x == 'l' and fp.dir == 1 and fp.selected == 0 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
+| c x when x == 13 and fp.dir == 1 and fp.selected == 0 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
+| c x when x == 'h' and fp.dir == 1 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
+| c _ |> _
+
+// buf edit — text-input and textarea were near-identical copies of this. The
+// take/insert/`| full` give-back dance lives here once; the two field pages
+// differ only in whether Enter is a character.
+tor buf-pop {}
+buf-pop = std/store:take(buf[0])
+| item d |> std/string:pop-char(s: d.text) |> std/store:insert(buf) { d.text }
+    | row _ |> _
+    | full f |> std/string:free(s: f.text)
+| empty |> _
+
+tor buf-append { ch: u8 }
+buf-append = std/store:take(buf[0])
+| item d |> std/string:append-char(s: d.text, ch)
+    | ok |> std/store:insert(buf) { d.text }
+        | row _ |> _
+        | full f |> std/string:free(s: f.text)
+    | err _ |> std/store:insert(buf) { d.text }
+        | row _ |> _
+        | full f |> std/string:free(s: f.text)
+| empty |> _
+
+tor text-input-keys { ch: u8 }
+text-input-keys = cond(ch)
+| c x when x == 127 |> buf-pop()
+| c x when x == 8 |> buf-pop()
+| c x when x >= 32 and x < 127 |> buf-append(ch)
+| c _ |> _
+
+tor textarea-keys { ch: u8 }
+textarea-keys = cond(ch)
+| c x when x == 127 |> buf-pop()
+| c x when x == 8 |> buf-pop()
+| c x when x == 13 |> buf-append(ch)
+| c x when x >= 32 and x < 127 |> buf-append(ch)
+| c _ |> _
+
 
 // Pump owns the TTY loop + `| err`. Collectors fuse `!` arms into the same `__H`
 // (koru/vaxis(name) — join key = run title). No second loop, no scope change.
