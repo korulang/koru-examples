@@ -18,6 +18,14 @@ import std/string
 import std/store
 import koru/vaxis
 import app/content
+import app/catalog
+import app/filepicker
+import app/table
+import app/help
+import app/paginator
+import app/book
+import app/viewport
+import app/list
 
 // Clocks share `ui` with spinner/text-input ms, so every tick arm is
 // when-guarded on one store. That is the honest shape for a set of independent
@@ -33,14 +41,6 @@ std/store:new(ui) {
     running: 1[i64]
 }
 std/store:new(buf, capacity: 2) { text: *std/string:String<instance!> }
-std/store:new(catalog) { selected: 0[i64], count: 13[i64] }
-std/store:new(list) { selected: 0[i64], count: 28[i64] }
-std/store:new(scroll) { y: 0[i64], count: 41[i64] }
-std/store:new(pager) { page: 0[i64], total: 7[i64] }
-std/store:new(book) { page: 0[i64], total: 3[i64], offset: 0[i64] }
-std/store:new(help) { show: 0[i64] }
-std/store:new(table) { selected: 0[i64], count: 20[i64] }
-std/store:new(fp) { selected: 0[i64], dir: 0[i64] }
 
 // ── page-route: store page → named continuation ───────────────────────────
 // cond + `=>` constructs named branches (320_137). Under `koru/vaxis:run`,
@@ -290,16 +290,16 @@ on-esc = page-route(page)
 // route's arms are optional.
 tor on-key { page: i64, ch: u8 }
 on-key = page-route(page)
-| catalog    |> catalog-keys(ch)
+| catalog    |> app/catalog:catalog-keys(ch)
 | progress   |> progress-keys(ch)
-| list       |> list-keys(ch)
-| viewport   |> viewport-keys(ch)
-| paginator  |> paginator-keys(ch)
-| help       |> help-keys(ch)
-| table      |> table-keys(ch)
+| list       |> app/list:list-keys(ch)
+| viewport   |> app/viewport:viewport-keys(ch)
+| paginator  |> app/paginator:paginator-keys(ch)
+| help       |> app/help:help-keys(ch)
+| table      |> app/table:table-keys(ch)
 | clocks     |> clocks-keys(ch)
-| pager      |> pager-keys(ch)
-| filepicker |> filepicker-keys(ch)
+| pager      |> app/book:pager-keys(ch)
+| filepicker |> app/filepicker:filepicker-keys(ch)
 | text-input |> text-input-keys(ch)
 | textarea   |> textarea-keys(ch)
 
@@ -313,17 +313,7 @@ clocks-keys = cond(ch)
 | c x when x == 'r' |> std/store:stored { ui.remaining: 15000, ui.elapsed: 0 }
 | c _ |> _
 
-tor pager-keys { ch: u8 }
-pager-keys = cond(ch)
-| c x when x == 'l' and book.page < book.total - 1 |> std/store:stored { book.page: book.page + 1, book.offset: book.offset + 12 }
-| c x when x == 'h' and book.page > 0 |> std/store:stored { book.page: book.page - 1, book.offset: book.offset - 12 }
-| c _ |> _
 
-tor catalog-keys { ch: u8 }
-catalog-keys = cond(ch)
-| c x when x == 'j' and catalog.selected < catalog.count - 1 |> std/store:stored { catalog.selected: catalog.selected + 1 }
-| c x when x == 'k' and catalog.selected > 0 |> std/store:stored { catalog.selected: catalog.selected - 1 }
-| c _ |> _
 
 tor progress-keys { ch: u8 }
 progress-keys = cond(ch)
@@ -331,58 +321,11 @@ progress-keys = cond(ch)
 | c x when x == ' ' and ui.value >= 100 |> std/store:stored { ui.value: 0 }
 | c _ |> _
 
-tor list-keys { ch: u8 }
-list-keys = cond(ch)
-| c x when x == 'j' and list.selected < list.count - 1 |> std/store:stored { list.selected: list.selected + 1 }
-| c x when x == 'k' and list.selected > 0 |> std/store:stored { list.selected: list.selected - 1 }
-| c _ |> _
 
-tor viewport-keys { ch: u8 }
-viewport-keys = cond(ch)
-| c x when x == 'j' and scroll.y < scroll.count - 1 |> std/store:stored { scroll.y: scroll.y + 1 }
-| c x when x == 'k' and scroll.y > 0 |> std/store:stored { scroll.y: scroll.y - 1 }
-| c x when x == 'd' and scroll.y < scroll.count - 12 |> std/store:stored { scroll.y: scroll.y + 12 }
-| c x when x == 'd' and scroll.y >= scroll.count - 12 and scroll.y < scroll.count - 1 |> std/store:stored { scroll.y: scroll.count - 1 }
-| c x when x == 'u' and scroll.y >= 12 |> std/store:stored { scroll.y: scroll.y - 12 }
-| c x when x == 'u' and scroll.y > 0 and scroll.y < 12 |> std/store:stored { scroll.y: 0 }
-| c x when x == 'g' and scroll.y > 0 |> std/store:stored { scroll.y: 0 }
-| c x when x == 'G' and scroll.y < scroll.count - 1 |> std/store:stored { scroll.y: scroll.count - 1 }
-| c _ |> _
 
-tor paginator-keys { ch: u8 }
-paginator-keys = cond(ch)
-| c x when x == 'l' and pager.page < pager.total - 1 |> std/store:stored { pager.page: pager.page + 1 }
-| c x when x == 'h' and pager.page > 0 |> std/store:stored { pager.page: pager.page - 1 }
-| c _ |> _
 
-tor help-keys { ch: u8 }
-help-keys = cond(ch)
-| c x when x == '?' and help.show == 0 |> std/store:stored { help.show: 1 }
-| c x when x == '?' and help.show == 1 |> std/store:stored { help.show: 0 }
-| c _ |> _
 
-tor table-keys { ch: u8 }
-table-keys = cond(ch)
-| c x when x == 'j' and table.selected < table.count - 1 |> std/store:stored { table.selected: table.selected + 1 }
-| c x when x == 'k' and table.selected > 0 |> std/store:stored { table.selected: table.selected - 1 }
-| c x when x == 'g' and table.selected > 0 |> std/store:stored { table.selected: 0 }
-| c x when x == 'G' and table.selected < table.count - 1 |> std/store:stored { table.selected: table.count - 1 }
-| c _ |> _
 
-tor filepicker-keys { ch: u8 }
-filepicker-keys = cond(ch)
-| c x when x == 'j' and fp.dir == 0 and fp.selected < 5 |> std/store:stored { fp.selected: fp.selected + 1 }
-| c x when x == 'j' and fp.dir == 1 and fp.selected < 4 |> std/store:stored { fp.selected: fp.selected + 1 }
-| c x when x == 'k' and fp.selected > 0 |> std/store:stored { fp.selected: fp.selected - 1 }
-| c x when x == 'g' and fp.selected > 0 |> std/store:stored { fp.selected: 0 }
-| c x when x == 'G' and fp.dir == 0 and fp.selected < 5 |> std/store:stored { fp.selected: 5 }
-| c x when x == 'G' and fp.dir == 1 and fp.selected < 4 |> std/store:stored { fp.selected: 4 }
-| c x when x == 'l' and fp.dir == 0 and fp.selected == 0 |> std/store:stored { fp.dir: 1, fp.selected: 0 }
-| c x when x == 13 and fp.dir == 0 and fp.selected == 0 |> std/store:stored { fp.dir: 1, fp.selected: 0 }
-| c x when x == 'l' and fp.dir == 1 and fp.selected == 0 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
-| c x when x == 13 and fp.dir == 1 and fp.selected == 0 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
-| c x when x == 'h' and fp.dir == 1 |> std/store:stored { fp.dir: 0, fp.selected: 0 }
-| c _ |> _
 
 // buf edit — text-input and textarea were near-identical copies of this. The
 // take/insert/`| full` give-back dance lives here once; the two field pages
