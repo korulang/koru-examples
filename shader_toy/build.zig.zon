@@ -1,7 +1,7 @@
 .{
     .name = .shader_toy,
     .version = "0.0.0",
-    .fingerprint = 0xaaf6f14c39c8aeb3,
+    .fingerprint = 0xaaf6f14c31c00a52,
     .dependencies = .{
         .vaxis = .{
             .url = "git+https://github.com/rockorager/libvaxis.git#75035b169e91a51c233f3742161f8eb8eafca659",

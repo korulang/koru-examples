@@ -1,4 +1,4 @@
-# koru-examples — read this before you touch anything
+# koru-examples — read this first
 
 **These apps are the OUTSIDE-IN showcase of the koru ecosystem.** Each one is a
 real, idiomatic program built the way a *user* builds it — consuming the koru

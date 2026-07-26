@@ -1,3 +1,12 @@
+---
+challenge: app
+kind: generator
+status: standing
+yields: one pristine koru app plus the pinned toolchain holes it hit
+catalog: ../chal-*
+family: corpus
+---
+
 # APP_CHALLENGE — stress the toolchain, grow a pristine corpus
 
 A **replayable generator**, not a task and not a backlog. You run it from zero,
