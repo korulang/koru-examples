@@ -67,7 +67,7 @@ koru/curl:multi.new()
 |> koru/curl:multi.start()
 ! started-multi t |> std/store:insert(xfers) { idx: t.index, pct: 0 }
 | started p |> std/store:insert(batch) { p }
-    | full f |> koru/curl:cancel(f.p): m |> koru/curl:multi.close(m)
+    | full f |> koru/curl:cancel(p: f): m |> koru/curl:multi.close(m)
 | failed e |> std/io:print.ln("could not start: {{ e.msg:s }}")
 
 // One frame's worth of transfer. The promise is BORROWED, never taken, so
