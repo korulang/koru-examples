@@ -14,10 +14,17 @@
 // on an INPUT, never on a branch.
 //
 // One row per transfer, so `! progress` writes the row it names instead of
-// three transfers stomping one cell. A sweep arm BINDS its row, so the two
-// nested sweeps below name two different rows — `b.p` is the batch's promise
-// and `x.pct` is a transfer's percentage, in the same arm, with nothing ambient
-// deciding which store either belongs to (690_086 / 690_087).
+// three transfers stomping one cell — and the rows are SEEDED BY `! started-multi`,
+// the arm `multi.start` pulses once per transfer. That matters more than it
+// looks: the row is created by the same act that creates the transfer, so the
+// two cannot drift. Add a fourth URL and a fourth bar appears. The earlier
+// spelling was three literal `insert(xfers)` rows hand-counted to agree with
+// three literal URLs, and forgetting one lost a bar with no error at all.
+//
+// A sweep arm BINDS its row, so the two nested sweeps below name two different
+// rows — `b.p` is the batch's promise and `x.pct` is a transfer's percentage,
+// in the same arm, with nothing ambient deciding which store either belongs to
+// (690_086 / 690_087).
 //
 //   koruc run downloads.k
 //
@@ -48,12 +55,6 @@ koru/vaxis:component(frame) {
     </dock>
 }
 
-// One row per transfer, seeded before anything is in flight so `! progress`
-// always has a row to land in.
-std/store:insert(xfers) { idx: 0, pct: 0 }
-std/store:insert(xfers) { idx: 1, pct: 0 }
-std/store:insert(xfers) { idx: 2, pct: 0 }
-
 // Start the batch once, at load. The obligation chain is the whole story:
 // `multi.new` issues an EMPTY batch, `multi.add` moves it to `open`,
 // `multi.start` accepts only `open` and converts it into a promise. Skip a step
@@ -64,6 +65,7 @@ koru/curl:multi.new()
 |> koru/curl:multi.add(url: "http://speedtest.tele2.net/10MB.zip")
 |> koru/curl:multi.add(url: "https://proof.ovh.net/files/10Mb.dat")
 |> koru/curl:multi.start()
+! started-multi t |> std/store:insert(xfers) { idx: t.index, pct: 0 }
 | started p |> std/store:insert(batch) { p }
     | row _ |> _
     | full f |> koru/curl:cancel(f.p): m |> koru/curl:multi.close(m)
@@ -77,7 +79,7 @@ pump = std/store:sweep(batch)
 ! sweep b |> koru/curl:poll(b.p)
     ! progress pr |> std/store:sweep(xfers)
         ! sweep x when x.idx == pr.index |> std/store:stored { x.pct: pr.percent }
-    ! finished r |> std/store:stored { ui.done: ui.done + 1 } |> koru/curl:close(resp: r)
+    ! finished r |> std/store:stored { ui.done: ui.done + 1 } 
     | running |> _
     | complete |> std/store:stored { ui.live: 0 }
 
@@ -86,7 +88,8 @@ koru/vaxis:run(title: "downloads")
 
 koru/vaxis(downloads)
 ! draw w |> frame(win: w)
-    |> koru/vaxis:stack(parent: w): st
+    |> koru/vaxis:sub-fill(parent: w, top: 1, bottom: 1): body
+    |> koru/vaxis:stack(parent: body): st
     |> std/store:sweep(xfers)
     ! sweep x |> koru/vaxis:stack-row(stack: st): bar
         |> koru/vaxis:progress-bar(win: bar, value: x.pct, max: 100)
