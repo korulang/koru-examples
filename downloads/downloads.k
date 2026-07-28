@@ -14,8 +14,10 @@
 // on an INPUT, never on a branch.
 //
 // One row per transfer, so `! progress` writes the row it names instead of
-// three transfers stomping one cell. `row` in a sweep projection is the 0-based
-// ordinal — the layout cursor a retained renderer needs (690_069).
+// three transfers stomping one cell. A sweep arm BINDS its row, so the two
+// nested sweeps below name two different rows — `b.p` is the batch's promise
+// and `x.pct` is a transfer's percentage, in the same arm, with nothing ambient
+// deciding which store either belongs to (690_086 / 690_087).
 //
 //   koruc run downloads.k
 //
@@ -49,11 +51,8 @@ koru/vaxis:component(frame) {
 // One row per transfer, seeded before anything is in flight so `! progress`
 // always has a row to land in.
 std/store:insert(xfers) { idx: 0, pct: 0 }
-| row _ |> _
 std/store:insert(xfers) { idx: 1, pct: 0 }
-| row _ |> _
 std/store:insert(xfers) { idx: 2, pct: 0 }
-| row _ |> _
 
 // Start the batch once, at load. The obligation chain is the whole story:
 // `multi.new` issues an EMPTY batch, `multi.add` moves it to `open`,
@@ -75,9 +74,9 @@ koru/curl:multi.new()
 // behind an index.
 tor pump {}
 pump = std/store:sweep(batch)
-! sweep { p: entity.p } |> koru/curl:poll(p)
+! sweep b |> koru/curl:poll(b.p)
     ! progress pr |> std/store:sweep(xfers)
-        ! sweep { entity.idx, entity.pct } when idx == pr.index |> std/store:stored { entity.pct: pr.percent }
+        ! sweep x when x.idx == pr.index |> std/store:stored { x.pct: pr.percent }
     ! finished r |> std/store:stored { ui.done: ui.done + 1 } |> koru/curl:close(resp: r)
     | running |> _
     | complete |> std/store:stored { ui.live: 0 }
@@ -89,7 +88,7 @@ koru/vaxis(downloads)
 ! draw w |> frame(win: w)
     |> koru/vaxis:stack(parent: w): st
     |> std/store:sweep(xfers)
-    ! sweep { entity.pct } |> koru/vaxis:stack-row(stack: st): bar
-        |> koru/vaxis:progress-bar(win: bar, value: pct, max: 100)
+    ! sweep x |> koru/vaxis:stack-row(stack: st): bar
+        |> koru/vaxis:progress-bar(win: bar, value: x.pct, max: 100)
 ! tick _ when ui.live == 1 |> pump()
 ! key k when k.ch == 'q' |> koru/vaxis:quit()
