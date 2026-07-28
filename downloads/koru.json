@@ -1,0 +1,9 @@
+{
+  "name": "downloads",
+  "version": "0.1.0",
+  "entry": "downloads.k",
+  "paths": {
+    "koru": "../../koru-libs",
+    "libs": "../../koru-libs"
+  }
+}
