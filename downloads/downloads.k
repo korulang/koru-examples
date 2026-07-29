@@ -38,7 +38,7 @@ import koru/curl
 std/store:new(ui) { done: 0[i64], live: 1[i64] }
 std/store:new(xfers, capacity: 8) { idx: i64, pct: 0[i64] }
 std/store:new(batch, capacity: 2) { p: *koru/curl:Pending<open!> }
-! discharge item |> koru/curl:cancel(item.p): m |> koru/curl:multi.close(m)
+! discharge item |> koru/curl:cancel(p: item): m |> koru/curl:multi.close(m)
 
 koru/vaxis:component(topbar) {
     <text>{{ title:s }}</text>
