@@ -33,4 +33,4 @@ std/string:from-page(text: "buy milk")
 
 std/io:print.ln("--- list ---")
 std/store:query(todos)
-! query { entity.label, entity.done } |> std/string:read(s: label): t |> std/io:print.ln("{{ t:s }} [{{ done:d }}]")
+! query e |> std/string:read(s: e.label): t |> std/io:print.ln("{{ t:s }} [{{ e.done:d }}]")

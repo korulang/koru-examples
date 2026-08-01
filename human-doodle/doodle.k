@@ -1,13 +1,14 @@
 import std/io
+import koru/vaxis
 
 tor get-from-network {} -> string<tainted!>
 get-from-network -> "Hello, World!"
 
 tor validate-response { response: string<!tainted> } -> string
-validate-response => response
+validate-response -> response
 
 get-from-network(): response
-|> validate-response(response)
+|> validate-response()
 |> std/io:print.ln("From network: {{response:s}}")
 
 // This should fail because the result is discharged(?)

@@ -50,7 +50,7 @@ const std = @import("std");
 
 // Reactive query: fires per matching insert, borrows the owned string, reads it.
 ~std/store:query(gitfiles)
-! query { entity.name } |> std/string:read(s: name): text |> std/io:print.ln("row: {{ text:s }}")
+! query e |> std/string:read(s: e.name): text |> std/io:print.ln("row: {{ text:s }}")
 
 // Drive: each git line becomes an owned-string row.
 ~git-lines()

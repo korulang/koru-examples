@@ -37,8 +37,9 @@ import koru/curl
 
 std/store:new(ui) { done: 0[i64], live: 1[i64] }
 std/store:new(xfers, capacity: 8) { idx: i64, pct: 0[i64] }
-std/store:new(batch, capacity: 2) { p: *koru/curl:Pending<open!> }
-! discharge item |> koru/curl:cancel(p: item): m |> koru/curl:multi.close(m)
+
+std/store:new(batch, capacity: 2) { *koru/curl:Pending<open!> }
+! discharge p |> koru/curl:cancel(p) |> koru/curl:multi.close()
 
 koru/vaxis:component(topbar) {
     <text>{{ title:s }}</text>
@@ -75,10 +76,10 @@ koru/curl:multi.new()
 // behind an index.
 tor pump {}
 pump = std/store:sweep(batch)
-! sweep b |> koru/curl:poll(b.p)
+! sweep p |> koru/curl:poll(p)
     ! progress pr |> std/store:sweep(xfers)
         ! sweep x when x.idx == pr.index |> std/store:stored { x.pct: pr.percent }
-    ! finished r |> std/store:stored { ui.done: ui.done + 1 } 
+    ! finished r |> std/store:stored { ui.done: ui.done + 1 }
     | running |> _
     | complete |> std/store:stored { ui.live: 0 }
 

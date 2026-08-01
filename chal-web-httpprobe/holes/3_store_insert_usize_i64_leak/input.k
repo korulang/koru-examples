@@ -19,4 +19,4 @@ std/string:from-page(text: "hello world")
 | err _ |> _
 
 std/store:query(sizes)
-! query { entity.bytes } |> std/io:print.ln("{{ bytes:d }}")
+! query e |> std/io:print.ln("{{ e.bytes:d }}")

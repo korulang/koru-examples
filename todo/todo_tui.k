@@ -9,13 +9,29 @@ import std/fmt
 import koru/vaxis
 
 std/store:new(todos, capacity: 16) {
-    label: *std/string:String<instance!>,
+    label: *std/string:String<instance!>
     done: i64
 }
 
 // Selection + edit mode. draft holds the rename buffer (owned string row).
 std/store:new(ui) { sel: 0[i64], editing: 0[i64] }
-std/store:new(draft, capacity: 2) { text: *std/string:String<instance!> }
+std/store:new(draft, capacity: 2) { *std/string:String<instance!> }
+
+// seed todos + empty draft buffer
+std/string:from-page(text: "buy milk")
+| ok a |> std/string:take(s: a): m |> std/store:insert(todos) { label: m, done: 0 }
+    | row _ |> std/string:from-page(text: "write koru")
+        | ok b |> std/string:take(s: b): label
+            |> std/store:insert(todos) { label, done: 0 }
+                | row _ |> std/string:from-page(text: "")
+                    | ok c |> std/string:take(s: c): text |> std/store:insert(draft) { text }
+                        | row _ |> _
+                        | full f |> std/string:free(s: f.text)
+                    | err _ |> _
+                | full f |> std/string:free(s: f.label)
+        | err _ |> _
+    | full f |> std/string:free(s: f.label)
+| err _ |> _
 
 koru/vaxis:component(todo-row) {
     <text>{{ text:s }}</text>
@@ -36,22 +52,6 @@ koru/vaxis:component(app) {
         <stack-panel dock="fill"/>
     </dock>
 }
-
-// seed todos + empty draft buffer
-std/string:from-page(text: "buy milk")
-| ok a |> std/string:take(s: a): m |> std/store:insert(todos) { label: m, done: 0 }
-    | row _ |> std/string:from-page(text: "write koru")
-        | ok b |> std/string:take(s: b): label
-            |> std/store:insert(todos) { label, done: 0 }
-                | row _ |> std/string:from-page(text: "")
-                    | ok c |> std/string:take(s: c): text |> std/store:insert(draft) { text }
-                        | row _ |> _
-                        | full f |> std/string:free(s: f.text)
-                    | err _ |> _
-                | full f |> std/string:free(s: f.label)
-        | err _ |> _
-    | full f |> std/string:free(s: f.label)
-| err _ |> _
 
 koru/vaxis:run(title: "todo")
 ! draw w |> app(win: w): panel

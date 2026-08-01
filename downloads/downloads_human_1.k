@@ -38,22 +38,30 @@ import koru/curl
 std/store:new(ui) { done: 0[i64], live: 1[i64] }
 std/store:new(xfers, capacity: 8) { idx: i64, pct: 0[i64] }
 
-std/store:new(batch, capacity: 2) { p: *koru/curl:Pending<open!> }
-! discharge item |> koru/curl:cancel(item.p): m |> koru/curl:multi.close(m)
+std/store:new(batch, capacity: 2) { *koru/curl:Pending<open!> }
+! discharge |> koru/curl:cancel()
 
 // Start the batch once, at load. The obligation chain is the whole story:
 // `multi.new` issues an EMPTY batch, `multi.add` moves it to `open`,
 // `multi.start` accepts only `open` and converts it into a promise. Skip a step
 // and it does not compile. Nothing threads `m` by hand — the thread fills the
 // one unfilled parameter whose type it matches.
-koru/curl:multi.new()
+[with]koru/curl:multi.new()
+|> multi.add(url: "https://speed.cloudflare.com/__down?bytes=10000000")
+|> multi.add(url: "http://speedtest.tele2.net/10MB.zip")
+|> multi.add(url: "https://proof.ovh.net/files/10Mb.dat")
+|> multi.start()
+! started-multi t |> std/store:insert(xfers) { idx: t.index, pct: 0 }
+| started p |> std/store:insert(batch) { p }
+    | full f |> koru/curl:cancel(f.p): m |> koru/curl:multi.close(m)
+| failed e |> std/io:print.ln("could not start: {{ e.msg:s }}")
 
 // One frame's worth of transfer. The promise is BORROWED, never taken, so
 // there is no remove-and-reinsert per tick and no swap-remove shuffling rows
 // behind an index.
 tor pump {}
 pump = std/store:sweep(batch)
-! sweep b |> koru/curl:poll(b.p)
+! sweep b |> koru/curl:poll()
     ! progress pr |> std/store:sweep(xfers)
         ! sweep x when x.idx == pr.index |> std/store:stored { x.pct: pr.percent }
     ! finished r |> std/store:stored { ui.done: ui.done + 1 }

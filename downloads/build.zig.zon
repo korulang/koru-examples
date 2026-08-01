@@ -1,7 +1,7 @@
 .{
     .name = .downloads,
     .version = "0.0.0",
-    .fingerprint = 0x4b73a4b54a08aacc,
+    .fingerprint = 0x4b73a4b53da7cf6c,
     .dependencies = .{
         .vaxis = .{
             .url = "git+https://github.com/rockorager/libvaxis.git#75035b169e91a51c233f3742161f8eb8eafca659",
