@@ -235,8 +235,8 @@ exhibit = page-route(page)
 | progress |> progress-exhibit(win, ui.value, max: 100)
 | spinner |> spinner-exhibit(win, ui.ms)
 | text-input |> koru/vaxis:sub(parent: win, x: 0, y: 0, w: 0, h: 0): root
-    |> std/store:sweep(buf)
-    ! sweep { buf: entity.text } |> std/string:read(s: buf): value
+    |> std/store:query(buf)
+    ! query { buf: entity.text } |> std/string:read(s: buf): value
         |> field-exhibit(win: root, value, ui.ms)
 | list |> app/content:dinner-items(): items
     |> list-exhibit(win, title: "What do you want for dinner?", items, list.selected)
@@ -248,8 +248,8 @@ exhibit = page-route(page)
 | table |> app/content:city-rows(): rows
     |> table-exhibit(win, headers: "Rank|City|Country|Population", widths: "4|16|8|10", rows, table.selected)
 | textarea |> koru/vaxis:sub(parent: win, x: 0, y: 0, w: 0, h: 0): root
-    |> std/store:sweep(buf)
-    ! sweep { buf: entity.text } |> std/string:read(s: buf): value
+    |> std/store:query(buf)
+    ! query { buf: entity.text } |> std/string:read(s: buf): value
         |> textarea-exhibit(win: root, value, ui.ms)
 | clocks |> clocks-exhibit(win,
     ui.remaining, t_running: ui.running,

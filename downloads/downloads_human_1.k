@@ -60,10 +60,10 @@ std/store:new(batch, capacity: 2) { *koru/curl:Pending<open!> }
 // there is no remove-and-reinsert per tick and no swap-remove shuffling rows
 // behind an index.
 tor pump {}
-pump = std/store:sweep(batch)
-! sweep b |> koru/curl:poll()
-    ! progress pr |> std/store:sweep(xfers)
-        ! sweep x when x.idx == pr.index |> std/store:stored { x.pct: pr.percent }
+pump = std/store:query(batch)
+! query b |> koru/curl:poll()
+    ! progress pr |> std/store:query(xfers)
+        ! query x when x.idx == pr.index |> std/store:stored { x.pct: pr.percent }
     ! finished r |> std/store:stored { ui.done: ui.done + 1 }
     | running |> _
     | complete |> std/store:stored { ui.live: 0 }
@@ -90,8 +90,8 @@ koru/vaxis(downloads)
 ! draw w |> frame(win: w)
     |> koru/vaxis:sub-fill(parent: w, top: 1, bottom: 1): body
     |> koru/vaxis:stack(parent: body): st
-    |> std/store:sweep(xfers)
-    ! sweep x |> koru/vaxis:stack-row(stack: st): bar
+    |> std/store:query(xfers)
+    ! query x |> koru/vaxis:stack-row(stack: st): bar
         |> koru/vaxis:progress-bar(win: bar, value: x.pct, max: 100)
 ! tick _ when ui.live == 1 |> pump()
 ! key k when k.ch == 'q' |> koru/vaxis:quit()

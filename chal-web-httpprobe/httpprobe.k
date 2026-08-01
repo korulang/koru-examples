@@ -51,5 +51,5 @@ app/httpc:get(url: "https://httpbin.org/status/500")
 
 // Render the accumulated dashboard from the store.
 std/io:print.ln("=== probe dashboard ===")
-std/store:query(probes)
-! query e |> std/io:print.ln("  status {{ e.status:d }}  ({{ e.bytes:d }} bytes)")
+std/store:rule(probes)
+! row e |> std/io:print.ln("  status {{ e.status:d }}  ({{ e.bytes:d }} bytes)")

@@ -32,5 +32,5 @@ std/string:from-page(text: "buy milk")
 | err _ |> _
 
 std/io:print.ln("--- list ---")
-std/store:query(todos)
-! query e |> std/string:read(s: e.label): t |> std/io:print.ln("{{ t:s }} [{{ e.done:d }}]")
+std/store:rule(todos)
+! row e |> std/string:read(s: e.label): t |> std/io:print.ln("{{ t:s }} [{{ e.done:d }}]")

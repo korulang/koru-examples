@@ -18,5 +18,5 @@ std/string:from-page(text: "hello world")
     | row _ |> std/string:free(s)
 | err _ |> _
 
-std/store:query(sizes)
-! query e |> std/io:print.ln("{{ e.bytes:d }}")
+std/store:rule(sizes)
+! row e |> std/io:print.ln("{{ e.bytes:d }}")

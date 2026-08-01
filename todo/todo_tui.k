@@ -55,12 +55,12 @@ koru/vaxis:component(app) {
 
 koru/vaxis:run(title: "todo")
 ! draw w |> app(win: w): panel
-    |> std/store:sweep(todos)
-    ! sweep { entity.label, entity.done, row } |> std/string:read(s: label): text
+    |> std/store:query(todos)
+    ! query { entity.label, entity.done, row } |> std/string:read(s: label): text
         |> koru/vaxis:stack-row(stack: panel): rw
         |> if(ui.editing == 1 and row == ui.sel)
-        | then |> std/store:sweep(draft)
-            ! sweep { buf: entity.text } |> std/string:read(s: buf): draft_text
+        | then |> std/store:query(draft)
+            ! query { buf: entity.text } |> std/string:read(s: buf): draft_text
                 |> std/fmt:ln("> _{{ draft_text:s }}_"): line
                 |> todo-row(win: rw, line.text)
         | else |> if(row == ui.sel)

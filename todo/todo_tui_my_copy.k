@@ -23,8 +23,8 @@ std/string:from-page(text: "buy milk")
 | err _ |> _
 
 koru/vaxis:run(title: "todo")
-! draw w |> std/store:sweep(todos)
-    ! sweep { entity.label, row } |> std/string:read(s: label): text
+! draw w |> std/store:query(todos)
+    ! query { entity.label, row } |> std/string:read(s: label): text
         |> koru/vaxis:write-at(x: 2, y: @as(u16, @intCast(row)))
 ! key k when k.ch == 'q' |> koru/vaxis:quit()
 ! key k when k.ch == 'a' |> std/string:from-page(text: "new task")

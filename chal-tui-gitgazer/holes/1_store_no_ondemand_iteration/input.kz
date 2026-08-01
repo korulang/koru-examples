@@ -16,7 +16,7 @@
 //
 // EXPECTED: prints `v 10` / `v 20` on each of the 2 iterations (rows swept on
 //   demand), OR a clear koru-level diagnostic naming the real constraint.
-// ACTUAL:   BACKEND_COMPILE_ERROR — "std/store:query(items): unknown store - no
+// ACTUAL:   BACKEND_COMPILE_ERROR — "std/store:rule(items): unknown store - no
 //   std/store:new(items) found" — which is ALSO misleading: the store IS
 //   declared; the real constraint is "query cannot be nested in a handler body".
 
@@ -28,5 +28,5 @@
 ~std/store:insert(items) { v: 20 }
 
 ~for(0..2)
-! each _ |> std/store:query(items)
-    ! query e |> std/io:print.ln("v {{ e.v:d }}")
+! each _ |> std/store:rule(items)
+    ! row e |> std/io:print.ln("v {{ e.v:d }}")

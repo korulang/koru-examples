@@ -65,8 +65,8 @@ const std = @import("std");
 ~std/store:new(gitfiles, capacity: 256) { name: *std/string:String<std/string:instance!>, y: i64 }
 
 // The render IS the reaction: each inserted row paints itself at its own line.
-~std/store:query(gitfiles)
-! query e |> std/string:read(s: e.name): text |> koru/vaxis:write-at(x: 2, e.y: @as(u16, @intCast(e.y + 2)), text)
+~std/store:rule(gitfiles)
+! row e |> std/string:read(s: e.name): text |> koru/vaxis:write-at(x: 2, e.y: @as(u16, @intCast(e.y + 2)), text)
 
 ~koru/vaxis:run(title: "gitgazer")
 ! draw _ |> koru/vaxis:write-at(x: 2, y: 0, text: "gitgazer — git status (q to quit)")
