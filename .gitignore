@@ -18,3 +18,4 @@ compiler_env.zig
 # koruc-generated build driver (koru.json is the real manifest; build.zig.zon is source)
 build.zig
 build_output.zig
+agent-notes.txt
