@@ -1,8 +1,0 @@
-{
-  "name": "chal-meta-exprlang",
-  "version": "0.1.0",
-  "entry": "app.kz",
-  "paths": {
-    "app": "."
-  }
-}
