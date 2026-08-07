@@ -6,9 +6,9 @@
 //   koruc --check input.k
 // Expected-vs-actual: expected a compiled GET; actual PARSE003 inside curl/index.kz.
 
-~import koru/curl
-~import std/io
+import koru/curl
+import std/io
 
-~koru/curl:get(url: "https://httpbin.org/get")
+koru/curl:get(url: "https://httpbin.org/get")
 | ok r |> std/io:print.ln("status {{ r.status:d }}")
 | err e |> std/io:print.ln("err {{ e.msg:s }}")
