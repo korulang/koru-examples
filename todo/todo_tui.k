@@ -56,20 +56,18 @@ koru/vaxis:component(app) {
 koru/vaxis:run(title: "todo")
 ! draw w |> app(win: w): panel
     |> std/store:query(todos)
-    ! query { entity.label, entity.done, row } |> std/string:read(s: label): text
-        |> koru/vaxis:stack-row(stack: panel): rw
+    ! query { entity.label, entity.done, row } |> koru/vaxis:stack-row(stack: panel): rw
         |> if(ui.editing == 1 and row == ui.sel)
         | then |> std/store:query(draft)
-            ! query { buf: entity.text } |> std/string:read(s: buf): draft_text
-                |> std/fmt:ln("> _{{ draft_text:s }}_"): line
+            ! query { buf: entity.text } |> std/fmt:ln("> _{{ buf:S }}_"): line
                 |> todo-row(win: rw, line.text)
         | else |> if(row == ui.sel)
             | then |> if(done == 1)
-                | then |> std/fmt:ln("> [x] {{ text:s }}"): line |> todo-row(win: rw, line.text)
-                | else |> std/fmt:ln("> [ ] {{ text:s }}"): line |> todo-row(win: rw, line.text)
+                | then |> std/fmt:ln("> [x] {{ label:S }}"): line |> todo-row(win: rw, line.text)
+                | else |> std/fmt:ln("> [ ] {{ label:S }}"): line |> todo-row(win: rw, line.text)
             | else |> if(done == 1)
-                | then |> std/fmt:ln("  [x] {{ text:s }}"): line |> todo-row(win: rw, line.text)
-                | else |> std/fmt:ln("  [ ] {{ text:s }}"): line |> todo-row(win: rw, line.text)
+                | then |> std/fmt:ln("  [x] {{ label:S }}"): line |> todo-row(win: rw, line.text)
+                | else |> std/fmt:ln("  [ ] {{ label:S }}"): line |> todo-row(win: rw, line.text)
 ! key k when ui.editing == 0 and k.ch == 'q' |> koru/vaxis:quit()
 ! key k when ui.editing == 0 and k.ch == 'j' and ui.sel + 1 < todos.len |> std/store:stored { ui.sel: ui.sel + 1 }
 ! key k when ui.editing == 0 and k.ch == 'k' and ui.sel > 0 |> std/store:stored { ui.sel: ui.sel - 1 }

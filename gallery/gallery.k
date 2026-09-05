@@ -15,6 +15,7 @@
 
 import std/io
 import std/string
+import std/fmt
 import std/store
 import koru/vaxis
 import app/content
@@ -236,8 +237,7 @@ exhibit = page-route(page)
 | spinner |> spinner-exhibit(win, ui.ms)
 | text-input |> koru/vaxis:sub(parent: win, x: 0, y: 0, w: 0, h: 0): root
     |> std/store:query(buf)
-    ! query { buf: entity.text } |> std/string:read(s: buf): value
-        |> field-exhibit(win: root, value, ui.ms)
+    ! query { buf: entity.text } |> std/fmt:ln("{{ buf:S }}"): value |> field-exhibit(win: root, value.text, ui.ms)
 | list |> app/content:dinner-items(): items
     |> list-exhibit(win, title: "What do you want for dinner?", items, list.selected)
 | viewport |> app/content:viewport-doc(): content
@@ -249,8 +249,7 @@ exhibit = page-route(page)
     |> table-exhibit(win, headers: "Rank|City|Country|Population", widths: "4|16|8|10", rows, table.selected)
 | textarea |> koru/vaxis:sub(parent: win, x: 0, y: 0, w: 0, h: 0): root
     |> std/store:query(buf)
-    ! query { buf: entity.text } |> std/string:read(s: buf): value
-        |> textarea-exhibit(win: root, value, ui.ms)
+    ! query { buf: entity.text } |> std/fmt:ln("{{ buf:S }}"): value |> textarea-exhibit(win: root, value.text, ui.ms)
 | clocks |> clocks-exhibit(win,
     ui.remaining, t_running: ui.running,
     ui.elapsed, s_running: ui.running)

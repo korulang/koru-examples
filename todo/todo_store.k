@@ -17,8 +17,8 @@ std/store:new(todos, capacity: 16) {
     label: *std/string:String<instance!>,
     done: i64
 }
-! inserted { label } |> std/string:read(s: label): t |> std/io:print.ln("  + {{ t:s }}")
-! removed  { label } |> std/string:read(s: label): t |> std/io:print.ln("  - {{ t:s }}")
+! inserted { label } |> std/io:print.ln("  + {{ label:S }}")
+! removed  { label } |> std/io:print.ln("  - {{ label:S }}")
 
 // add "buy milk", then "write koru"; toggle "buy milk" done; drop "write koru".
 std/string:from-page(text: "buy milk")
@@ -33,4 +33,4 @@ std/string:from-page(text: "buy milk")
 
 std/io:print.ln("--- list ---")
 std/store:rule(todos)
-! row e |> std/string:read(s: e.label): t |> std/io:print.ln("{{ t:s }} [{{ e.done:d }}]")
+! row e |> std/io:print.ln("{{ e.label:S }} [{{ e.done:d }}]")

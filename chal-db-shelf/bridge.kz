@@ -11,7 +11,7 @@
 ~import std/store
 
 ~std/store:new(titles, capacity: 16) { title: *std/string:String<std/string:instance!> }
-! inserted { title } |> std/string:read(s: title): t |> std/io:print.ln("store <- {{ t:s }}")
+! inserted { title } |> std/io:print.ln("store <- {{ title:S }}")
 
 ~app/shelf_sqlite:open(path: "shelf.db")
 | db d |> app/shelf_sqlite:query.literal(conn: d, sql: "SELECT title FROM bookmarks ORDER BY id")

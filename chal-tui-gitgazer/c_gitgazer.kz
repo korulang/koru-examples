@@ -9,7 +9,7 @@
 //
 //   ! draw ─> git-lines (subprocess) ─> ! line{text,idx}
 //           ─> from-page/take ─> store insert{name,y}
-//           ─> query fires ─> string:read ─> vaxis:write-at(y) ─> render
+//           ─> query fires ─> fmt-copy ─> vaxis:write-at(y) ─> render
 //
 // Three effect sources coexist in one program: vaxis `run`, the store `query`,
 // and the `git-lines` FFI effect — the store↔vaxis convergence driven by a live
@@ -27,6 +27,7 @@
 ~import std/io
 ~import std/string
 ~import std/store
+~import std/fmt
 ~import koru/vaxis
 
 const std = @import("std");
@@ -65,8 +66,7 @@ const std = @import("std");
 ~std/store:new(gitfiles, capacity: 256) { name: *std/string:String<std/string:instance!>, y: i64 }
 
 // The render IS the reaction: each inserted row paints itself at its own line.
-~std/store:rule(gitfiles)
-! row e |> std/string:read(s: e.name): text |> koru/vaxis:write-at(x: 2, e.y: @as(u16, @intCast(e.y + 2)), text)
+! row e |> std/fmt:ln("{{ e.name:S }}"): t |> koru/vaxis:write-at(x: 2, y: @as(u16, @intCast(e.y + 2)), t.text)
 
 ~koru/vaxis:run(title: "gitgazer")
 ! draw _ |> koru/vaxis:write-at(x: 2, y: 0, text: "gitgazer — git status (q to quit)")
