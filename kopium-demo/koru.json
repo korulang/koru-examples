@@ -1,0 +1,9 @@
+{
+  "name": "kopium_demo",
+  "version": "0.1.0",
+  "entry": "agent.k",
+  "paths": {
+    "koru": "../../koru-libs",
+    "libs": "../../koru-libs"
+  }
+}

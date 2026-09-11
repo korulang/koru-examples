@@ -4,7 +4,7 @@
 // categorizes into named continuations (`=> catalog`, …) → exhibits hang
 // off those branches. Pump pulses take meaning from the route.
 // Collectors: `koru/vaxis:run` owns the loop + `| err`; `koru/vaxis(gallery)`
-// fuses `! draw` / `! tick` / `! key`. Tree-local keys: `| clocks |> clocks-keys`
+// fuses `! draw` / `! tick` / `! key-raw`. Tree-local keys: `| clocks |> clocks-keys`
 // (page once, then cond on ch) — not flat `| clocks when …` × N.
 //
 //   koruc run gallery.k
@@ -41,7 +41,10 @@ std/store:new(ui) {
     elapsed: 0[i64],
     running: 1[i64]
 }
-std/store:new(buf, capacity: 2) { text: *std/string:String<instance!> }
+// Anonymous single column: `! query b` binds the *String WITH its instance
+// phantom — a named column (`{ text: *… }`) makes every use a row
+// projection, and projections arrive phantomless (KORU030 on the String ops).
+std/store:new(buf, capacity: 2) { *std/string:String<instance!> }
 
 // ── page-route: store page → named continuation ───────────────────────────
 // cond + `=>` constructs named branches (320_137). Under `koru/vaxis:run`,
@@ -225,7 +228,7 @@ koru/vaxis:component(style-exhibit) {
 std/string:from-page(text: "")
 | ok a |> std/string:take(s: a): text |> std/store:insert(buf) { text }
     | row _ |> _
-    | full f |> std/string:free(s: f.text)
+    | full f |> std/string:free(s: f)
 | err _ |> _
 
 // Flat branch arms live here — not under run's `|` terminal slot.
@@ -237,7 +240,7 @@ exhibit = page-route(page)
 | spinner |> spinner-exhibit(win, ui.ms)
 | text-input |> koru/vaxis:sub(parent: win, x: 0, y: 0, w: 0, h: 0): root
     |> std/store:query(buf)
-    ! query { buf: entity.text } |> std/fmt:ln("{{ buf:S }}"): value |> field-exhibit(win: root, value.text, ui.ms)
+    ! query b |> std/fmt:ln("{{ b:S }}"): value |> field-exhibit(win: root, value: value.text, ui.ms)
 | list |> app/content:dinner-items(): items
     |> list-exhibit(win, title: "What do you want for dinner?", items, list.selected)
 | viewport |> app/content:viewport-doc(): content
@@ -249,7 +252,7 @@ exhibit = page-route(page)
     |> table-exhibit(win, headers: "Rank|City|Country|Population", widths: "4|16|8|10", rows, table.selected)
 | textarea |> koru/vaxis:sub(parent: win, x: 0, y: 0, w: 0, h: 0): root
     |> std/store:query(buf)
-    ! query { buf: entity.text } |> std/fmt:ln("{{ buf:S }}"): value |> textarea-exhibit(win: root, value.text, ui.ms)
+    ! query b |> std/fmt:ln("{{ b:S }}"): value |> textarea-exhibit(win: root, value: value.text, ui.ms)
 | clocks |> clocks-exhibit(win,
     ui.remaining, t_running: ui.running,
     ui.elapsed, s_running: ui.running)
@@ -326,26 +329,19 @@ progress-keys = cond(ch)
 
 
 
-// buf edit — text-input and textarea were near-identical copies of this. The
-// take/insert/`| full` give-back dance lives here once; the two field pages
-// differ only in whether Enter is a character.
+// buf edit — text-input and textarea share this. The query binds the row and
+// the String ops mutate its `text` field in place — no take/reinsert; the
+// row projection stays a borrow and ownership never moves. The two field
+// pages differ only in whether Enter is a character.
 tor buf-pop {}
-buf-pop = std/store:take(buf[0])
-| item d |> std/string:pop-char(s: d.text) |> std/store:insert(buf) { d.text }
-    | row _ |> _
-    | full f |> std/string:free(s: f.text)
-| empty |> _
+buf-pop = std/store:query(buf)
+! query b |> std/string:pop-char(s: b)
 
 tor buf-append { ch: u8 }
-buf-append = std/store:take(buf[0])
-| item d |> std/string:append-char(s: d.text, ch)
-    | ok |> std/store:insert(buf) { d.text }
-        | row _ |> _
-        | full f |> std/string:free(s: f.text)
-    | err _ |> std/store:insert(buf) { d.text }
-        | row _ |> _
-        | full f |> std/string:free(s: f.text)
-| empty |> _
+buf-append = std/store:query(buf)
+! query b |> std/string:append-char(s: b, ch)
+    | ok |> _
+    | err _ |> _
 
 tor text-input-keys { ch: u8 }
 text-input-keys = cond(ch)
@@ -381,8 +377,8 @@ koru/vaxis(gallery)
     ui.ms: ms
 }
 ! tick ms when ui.ms > 0 and ui.running == 0 |> std/store:stored { ui.ms: ms }
-! key k when k.ch == 'n' and ui.page < 13 |> std/store:stored { ui.page: ui.page + 1 }
-! key k when k.ch == 'p' and ui.page > 0 |> std/store:stored { ui.page: ui.page - 1 }
-! key k when k.ch == 'q' |> on-q(ui.page)
-! key k when k.ch == 27 |> on-esc(ui.page)
-! key k |> on-key(ui.page, k.ch)
+! key-raw k when k.ch == 'n' and ui.page < 13 |> std/store:stored { ui.page: ui.page + 1 }
+! key-raw k when k.ch == 'p' and ui.page > 0 |> std/store:stored { ui.page: ui.page - 1 }
+! key-raw k when k.ch == 'q' |> on-q(ui.page)
+! key-raw k when k.ch == 27 |> on-esc(ui.page)
+! key-raw k |> on-key(ui.page, k.ch)
