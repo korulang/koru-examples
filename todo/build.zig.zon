@@ -1,7 +1,7 @@
 .{
-    .name = .todo_tui,
+    .name = .todo,
     .version = "0.0.0",
-    .fingerprint = 0x1e715ae847f23f34,
+    .fingerprint = 0x5a0eb6a0da6571bd,
     .dependencies = .{
         .vaxis = .{
             .url = "git+https://github.com/rockorager/libvaxis.git#75035b169e91a51c233f3742161f8eb8eafca659",

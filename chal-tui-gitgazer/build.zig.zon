@@ -1,5 +1,5 @@
 .{
-    .name = .c_gitgazer,
+    .name = .@"chal-tui-gitgazer",
     .version = "0.0.0",
     .fingerprint = 0x776defaec14efc8e,
     .dependencies = .{
