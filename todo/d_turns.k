@@ -7,7 +7,7 @@
 // "you:"/"claude:" into the transcript, reseeds an empty draft, and fires
 // `send`. The batch retires through a second `! tick` arm (`retire`) so
 // the next turn starts with a fresh multi — poll's `| complete` can't
-// take its own swept row out from under itself.
+// take its own row out from under itself.
 //
 // Scope cuts, named plainly:
 //   - single-turn context: each send carries only the newest message.
@@ -53,7 +53,7 @@ import koru/yyjson
 import koru/sse
 import app/auth
 
-std/store:new(ui) { live: 0[i64], retire: 0[i64] }
+std/store:new(ui) { live: 0[i64], retire: 0[i64], brow: 0[i64] }
 std/store:new(transcript, capacity: 2) { *std/string:String<instance!> }
 std/store:new(draft, capacity: 2) { *std/string:String<instance!> }
 
@@ -120,15 +120,15 @@ handle-delta = koru/yyjson:parse(text: payload)
 
 // One frame's worth of transfer. `| complete` only raises the retire
 // flag — the batch row is taken out on the NEXT tick, never from inside
-// its own sweep.
+// its own query.
 tor pump {}
-pump = std/store:sweep(batch)
-! sweep p |> koru/curl:poll(p)
-    ! chunk ch |> std/store:sweep(framer)
-        ! sweep fs |> koru/sse:feed(s: fs, bytes: ch.data)
+pump = std/store:query(batch)
+! query p |> koru/curl:poll(p)
+    ! chunk ch |> std/store:query(framer)
+        ! query fs |> koru/sse:feed(s: fs, bytes: ch.data)
             ! data d |> handle-delta(payload: d)
-                | ok t |> std/store:sweep(transcript)
-                    ! sweep buf |> std/string:append(s: buf, text: t)
+                | ok t |> std/store:query(transcript)
+                    ! query buf |> std/string:append(s: buf, text: t)
                         | ok |> _
                         | err _ |> _
                 | gone |> _
@@ -139,16 +139,16 @@ pump = std/store:sweep(batch)
 
 // Retire the finished batch so the next turn starts clean.
 tor retire {}
-retire = std/store:take(batch[0])
+retire = std/store:take(batch[ui.brow])
 | item p |> koru/curl:finish(p): m |> koru/curl:multi.close(m) |> std/store:stored { ui.retire: 0 }
 | empty |> std/store:stored { ui.retire: 0 }
 
-// Fire one turn. `body` rides the head chain (a tor param in a SWEEP arm
+// Fire one turn. `body` rides the head chain (a tor param in a query arm
 // would be 690_234); auth comes from module state for the same reason.
 tor send { body: string }
 send = app/auth:recall(): auth |> koru/curl:multi.new() |> koru/curl:multi.add.post(url: "https://openrouter.ai/api/v1/chat/completions", body, headers: &.{ .{ .name = "Content-Type", .value = "application/json" }, .{ .name = "Authorization", .value = auth } }) |> koru/curl:multi.start()
 | started p |> std/store:stored { ui.live: 1 } |> std/store:insert(batch) { p }
-    | row _ |> _
+    | row rh |> std/store:stored { ui.brow: rh }
     | full f |> koru/curl:cancel(p: f): m |> koru/curl:multi.close(m)
 | failed _ |> std/store:stored { ui.live: 0 }
 
@@ -186,26 +186,26 @@ koru/vaxis(kopium)
 ! draw w |> frame(win: w)
     |> koru/vaxis:sub-fill(parent: w, top: 1, bottom: 3): body
     |> koru/vaxis:sub-from-bottom(parent: w, up: 2, h: 1): iw
-    |> std/store:sweep(draft)
-    ! sweep d |> std/fmt:ln("> {{ d:S }}_"): line |> koru/vaxis:write-in(win: iw, x: 0, y: 0, line.text) |> std/store:sweep(transcript)
-        ! sweep buf |> std/fmt:ln("{{ buf:S }}"): t |> koru/vaxis:write-in(win: body, x: 0, y: 0, t.text)
+    |> std/store:query(draft)
+    ! query d |> std/fmt:ln("> {{ d:S }}_"): line |> koru/vaxis:write-in(win: iw, x: 0, y: 0, line.text) |> std/store:query(transcript)
+        ! query buf |> std/fmt:ln("{{ buf:S }}"): t |> koru/vaxis:write-in(win: body, x: 0, y: 0, t.text)
 ! tick _ when ui.live == 1 |> pump()
 ! tick _ when ui.retire == 1 |> retire()
 ! key k when k.ch == 27 |> koru/vaxis:quit()
-! key k when k.ch == 13 and ui.live == 0 and ui.retire == 0 |> std/store:sweep(draft)
-    ! sweep d |> std/fmt:ln("{{ d:S }}"): u |> app/auth:chat-body(prompt: u.text): body |> std/store:sweep(transcript)
-        ! sweep buf |> std/string:append(s: buf, text: "you: ")
+! key k when k.ch == 13 and ui.live == 0 and ui.retire == 0 |> std/store:query(draft)
+    ! query d |> std/fmt:ln("{{ d:S }}"): u |> app/auth:chat-body(prompt: u.text): body |> std/store:query(transcript)
+        ! query buf |> std/string:append(s: buf, text: "you: ")
             | ok |> std/string:append(s: buf, u.text)
                 | ok |> std/string:append(s: buf, text: "\n\nclaude: ")
                     | ok |> std/string:clear(s: d) |> send(body)
                     | err _ |> _
                 | err _ |> _
             | err _ |> _
-! key k when k.ch == 127 |> std/store:sweep(draft)
-    ! sweep d |> std/string:pop-char(s: d)
-! key k when k.ch == 8 |> std/store:sweep(draft)
-    ! sweep d |> std/string:pop-char(s: d)
-! key k when k.ch >= 32 and k.ch < 127 and ui.live == 0 |> std/store:sweep(draft)
-    ! sweep d |> std/string:append-char(s: d, k.ch)
+! key k when k.ch == 127 |> std/store:query(draft)
+    ! query d |> std/string:pop-char(s: d)
+! key k when k.ch == 8 |> std/store:query(draft)
+    ! query d |> std/string:pop-char(s: d)
+! key k when k.ch >= 32 and k.ch < 127 and ui.live == 0 |> std/store:query(draft)
+    ! query d |> std/string:append-char(s: d, k.ch)
         | ok |> _
         | err _ |> _

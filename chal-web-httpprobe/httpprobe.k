@@ -33,19 +33,19 @@ std/store:watch(stats)
 
 // Probe 1 — a healthy JSON endpoint.
 app/httpc:get(url: "https://httpbin.org/get")
-| ok r |> std/store:insert(probes) { status: r.status, bytes: r.size }
+| ok r |> std/store:insert(probes) { r.status, bytes: r.size }
     | row _ |> app/httpc:close(resp: r)
 | err e |> std/io:print.ln("probe1 transport error: {{ e.msg:s }}")
 
 // Probe 2 — a 404 (transport still succeeds; the status carries the code).
 app/httpc:get(url: "https://httpbin.org/status/404")
-| ok r |> std/store:insert(probes) { status: r.status, bytes: r.size }
+| ok r |> std/store:insert(probes) { r.status, bytes: r.size }
     | row _ |> app/httpc:close(resp: r)
 | err e |> std/io:print.ln("probe2 transport error: {{ e.msg:s }}")
 
 // Probe 3 — a 500.
 app/httpc:get(url: "https://httpbin.org/status/500")
-| ok r |> std/store:insert(probes) { status: r.status, bytes: r.size }
+| ok r |> std/store:insert(probes) { r.status, bytes: r.size }
     | row _ |> app/httpc:close(resp: r)
 | err e |> std/io:print.ln("probe3 transport error: {{ e.msg:s }}")
 

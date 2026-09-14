@@ -9,12 +9,14 @@ import std/fmt
 import koru/vaxis
 
 std/store:new(todos, capacity: 16) {
-    label: *std/string:String<instance!>
+    label: *std/string:String<instance!>,
     done: i64
 }
 
 // Selection + edit mode. draft holds the rename buffer (owned string row).
-std/store:new(ui) { sel: 0[i64], editing: 0[i64] }
+// `drafth` is that row's handle: the draft is a singleton this file creates,
+// and a handle — not a position — is what addresses a row (690_070, 690_092).
+std/store:new(ui) { sel: 0[i64], editing: 0[i64], drafth: 0[i64] }
 std/store:new(draft, capacity: 2) { *std/string:String<instance!> }
 
 // seed todos + empty draft buffer
@@ -25,7 +27,7 @@ std/string:from-page(text: "buy milk")
             |> std/store:insert(todos) { label, done: 0 }
                 | row _ |> std/string:from-page(text: "")
                     | ok c |> std/string:take(s: c): text |> std/store:insert(draft) { text }
-                        | row _ |> _
+                        | row rh |> std/store:stored { ui.drafth: rh }
                         | full f |> std/string:free(s: f.text)
                     | err _ |> _
                 | full f |> std/string:free(s: f.label)
@@ -56,18 +58,18 @@ koru/vaxis:component(app) {
 koru/vaxis:run(title: "todo")
 ! draw w |> app(win: w): panel
     |> std/store:query(todos)
-    ! query { entity.label, entity.done, row } |> koru/vaxis:stack-row(stack: panel): rw
+    ! query { [row]e, [ordinal]row } |> koru/vaxis:stack-row(stack: panel): rw
         |> if(ui.editing == 1 and row == ui.sel)
         | then |> std/store:query(draft)
-            ! query { buf: entity.text } |> std/fmt:ln("> _{{ buf:S }}_"): line
+            ! query b |> std/fmt:ln("> _{{ b:S }}_"): line
                 |> todo-row(win: rw, line.text)
         | else |> if(row == ui.sel)
-            | then |> if(done == 1)
-                | then |> std/fmt:ln("> [x] {{ label:S }}"): line |> todo-row(win: rw, line.text)
-                | else |> std/fmt:ln("> [ ] {{ label:S }}"): line |> todo-row(win: rw, line.text)
-            | else |> if(done == 1)
-                | then |> std/fmt:ln("  [x] {{ label:S }}"): line |> todo-row(win: rw, line.text)
-                | else |> std/fmt:ln("  [ ] {{ label:S }}"): line |> todo-row(win: rw, line.text)
+            | then |> if(e.done == 1)
+                | then |> std/fmt:ln("> [x] {{ e.label:S }}"): line |> todo-row(win: rw, line.text)
+                | else |> std/fmt:ln("> [ ] {{ e.label:S }}"): line |> todo-row(win: rw, line.text)
+            | else |> if(e.done == 1)
+                | then |> std/fmt:ln("  [x] {{ e.label:S }}"): line |> todo-row(win: rw, line.text)
+                | else |> std/fmt:ln("  [ ] {{ e.label:S }}"): line |> todo-row(win: rw, line.text)
 ! key k when ui.editing == 0 and k.ch == 'q' |> koru/vaxis:quit()
 ! key k when ui.editing == 0 and k.ch == 'j' and ui.sel + 1 < todos.len |> std/store:stored { ui.sel: ui.sel + 1 }
 ! key k when ui.editing == 0 and k.ch == 'k' and ui.sel > 0 |> std/store:stored { ui.sel: ui.sel - 1 }
@@ -83,42 +85,42 @@ koru/vaxis:run(title: "todo")
         | then |> std/store:stored { ui.sel: ui.sel - 1 }
         | else |> _
     | empty |> _
-! key k when ui.editing == 0 and k.ch == 'r' and ui.sel < todos.len |> std/store:take(draft[0])
+! key k when ui.editing == 0 and k.ch == 'r' and ui.sel < todos.len |> std/store:take(draft[ui.drafth])
     | item d |> std/string:clear(s: d.text) |> std/store:insert(draft) { d.text }
-        | row _ |> std/store:stored { ui.editing: 1 }
+        | row rh |> std/store:stored { ui.drafth: rh, ui.editing: 1 }
         | full f |> std/string:free(s: f.text)
     | empty |> _
-! key k when ui.editing == 1 and k.ch == 27 |> std/store:take(draft[0])
+! key k when ui.editing == 1 and k.ch == 27 |> std/store:take(draft[ui.drafth])
     | item d |> std/string:clear(s: d.text) |> std/store:insert(draft) { d.text }
-        | row _ |> std/store:stored { ui.editing: 0 }
+        | row rh |> std/store:stored { ui.drafth: rh, ui.editing: 0 }
         | full f |> std/string:free(s: f.text)
     | empty |> std/store:stored { ui.editing: 0 }
-! key k when ui.editing == 1 and k.ch == 13 and ui.sel < todos.len |> std/store:take(draft[0])
+! key k when ui.editing == 1 and k.ch == 13 and ui.sel < todos.len |> std/store:take(draft[ui.drafth])
     | item d |> std/store:stored { todos[ui.sel].label: d.text }
         |> std/store:stored { ui.editing: 0 }
         |> std/string:from-page(text: "")
             | ok a |> std/string:take(s: a): text |> std/store:insert(draft) { text }
-                | row _ |> _
+                | row rh |> std/store:stored { ui.drafth: rh }
                 | full f |> std/string:free(s: f.text)
             | err _ |> _
     | empty |> std/store:stored { ui.editing: 0 }
-! key k when ui.editing == 1 and k.ch == 127 |> std/store:take(draft[0])
+! key k when ui.editing == 1 and k.ch == 127 |> std/store:take(draft[ui.drafth])
     | item d |> std/string:pop-char(s: d.text) |> std/store:insert(draft) { d.text }
-        | row _ |> _
+        | row rh |> std/store:stored { ui.drafth: rh }
         | full f |> std/string:free(s: f.text)
     | empty |> _
-! key k when ui.editing == 1 and k.ch == 8 |> std/store:take(draft[0])
+! key k when ui.editing == 1 and k.ch == 8 |> std/store:take(draft[ui.drafth])
     | item d |> std/string:pop-char(s: d.text) |> std/store:insert(draft) { d.text }
-        | row _ |> _
+        | row rh |> std/store:stored { ui.drafth: rh }
         | full f |> std/string:free(s: f.text)
     | empty |> _
-! key k when ui.editing == 1 and k.ch >= 32 and k.ch < 127 |> std/store:take(draft[0])
+! key k when ui.editing == 1 and k.ch >= 32 and k.ch < 127 |> std/store:take(draft[ui.drafth])
     | item d |> std/string:append-char(s: d.text, k.ch)
         | ok |> std/store:insert(draft) { d.text }
-            | row _ |> _
+            | row rh |> std/store:stored { ui.drafth: rh }
             | full f |> std/string:free(s: f.text)
         | err _ |> std/store:insert(draft) { d.text }
-            | row _ |> _
+            | row rh |> std/store:stored { ui.drafth: rh }
             | full f |> std/string:free(s: f.text)
     | empty |> _
 | err e |> std/io:print.ln("vaxis failed: {{ e:s }}")
