@@ -27,6 +27,7 @@ import app/paginator
 import app/book
 import app/viewport
 import app/list
+import app/honest
 
 // Clocks share `ui` with spinner/text-input ms, so every tick arm is
 // when-guarded on one store. That is the honest shape for a set of independent
@@ -70,6 +71,7 @@ tor page-route { page: i64 }
 | ?filepicker
 | ?pager
 | ?style
+| ?honest
 
 page-route = cond(page)
 | c p when p == 0 => catalog
@@ -85,6 +87,7 @@ page-route = cond(page)
 | c p when p == 10 => clocks
 | c p when p == 11 => filepicker
 | c p when p == 12 => pager
+| c p when p == 14 => honest
 | c _ => style
 
 koru/vaxis:component(topbar) {
@@ -225,6 +228,14 @@ koru/vaxis:component(style-exhibit) {
     </dock>
 }
 
+koru/vaxis:component(honest-exhibit) {
+    <dock>
+        <topbar dock="top" h="1" title="gallery · honest board"/>
+        <statusbar dock="bottom" h="1" hint="j/k line · d/u half · g/G ends · n/p · q"/>
+        <viewport dock="fill" content={{ content:s }} offset={{ y:d }}/>
+    </dock>
+}
+
 std/string:from-page(text: "")
 | ok a |> std/string:take(s: a): text |> std/store:insert(buf) { text }
     | row _ |> _
@@ -240,7 +251,9 @@ exhibit = page-route(page)
 | spinner |> spinner-exhibit(win, ui.ms)
 | text-input |> koru/vaxis:sub(parent: win, x: 0, y: 0, w: 0, h: 0): root
     |> std/store:query(buf)
-    ! query b |> std/fmt:ln("{{ b:S }}"): value |> field-exhibit(win: root, value: value.text, ui.ms)
+    ! query b |> std/string:read(s: b)
+        ! text t |> field-exhibit(win: root, value: t, ui.ms)
+        | done n |> _
 | list |> app/content:dinner-items(): items
     |> list-exhibit(win, title: "What do you want for dinner?", items, list.selected)
 | viewport |> app/content:viewport-doc(): content
@@ -252,7 +265,9 @@ exhibit = page-route(page)
     |> table-exhibit(win, headers: "Rank|City|Country|Population", widths: "4|16|8|10", rows, table.selected)
 | textarea |> koru/vaxis:sub(parent: win, x: 0, y: 0, w: 0, h: 0): root
     |> std/store:query(buf)
-    ! query b |> std/fmt:ln("{{ b:S }}"): value |> textarea-exhibit(win: root, value: value.text, ui.ms)
+    ! query b |> std/string:read(s: b)
+        ! text t |> textarea-exhibit(win: root, value: t, ui.ms)
+        | done n |> _
 | clocks |> clocks-exhibit(win,
     ui.remaining, t_running: ui.running,
     ui.elapsed, s_running: ui.running)
@@ -270,14 +285,14 @@ exhibit = page-route(page)
 | style |> style-exhibit(win)
     |> koru/vaxis:write-styled(x: 2, y: 3, text: "▌▌▌▌▌▌░░░░░░  half-block  #5A56E0", style: { fg: 0x5A56E0 })
     |> koru/vaxis:write-styled(x: 2, y: 5, text: "████████░░░░  block  pink on slate", style: { fg: 0xEE6FF8, bg: 0x606060 })
+| honest |> app/content:honest-board(): content
+    |> honest-exhibit(win, content, board.y)
 
 // Rim chords that care about page identity via the same route vocabulary.
 // Optional arms: name the exceptions; `|?` covers the rest (355_011).
 tor on-q { page: i64 }
 on-q = page-route(page)
-| text-input |> _
-| textarea |> _
-|? |> koru/vaxis:quit()
+|* |> koru/vaxis:quit()
 
 tor on-esc { page: i64 }
 on-esc = page-route(page)
@@ -304,6 +319,7 @@ on-key = page-route(page)
 | filepicker |> app/filepicker:filepicker-keys(ch)
 | text-input |> text-input-keys(ch)
 | textarea   |> textarea-keys(ch)
+| honest     |> app/honest:honest-keys(ch)
 
 // Tree-local vocab: page-route enters the page once; local cond branches on key/state.
 tor clocks-keys { ch: u8 }
@@ -377,7 +393,7 @@ koru/vaxis(gallery)
     ui.ms: ms
 }
 ! tick ms when ui.ms > 0 and ui.running == 0 |> std/store:stored { ui.ms: ms }
-! key-raw k when k.ch == 'n' and ui.page < 13 |> std/store:stored { ui.page: ui.page + 1 }
+! key-raw k when k.ch == 'n' and ui.page < 14 |> std/store:stored { ui.page: ui.page + 1 }
 ! key-raw k when k.ch == 'p' and ui.page > 0 |> std/store:stored { ui.page: ui.page - 1 }
 ! key-raw k when k.ch == 'q' |> on-q(ui.page)
 ! key-raw k when k.ch == 27 |> on-esc(ui.page)
